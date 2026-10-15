@@ -15,7 +15,7 @@ function loadToken() {
   const file = path.join(os.homedir(), ".remote-deck-token");
   try { return fs.readFileSync(file, "utf8").trim(); } catch {}
   const token = crypto.randomBytes(12).toString("hex");
-  fs.writeFileSync(file, token);
+  fs.writeFileSync(file, token, { mode: 0o600 });
   return token;
 }
 
