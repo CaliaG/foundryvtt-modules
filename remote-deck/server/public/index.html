@@ -100,13 +100,15 @@
 
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
 
+  // Preferiti raggruppati per categoria d'origine ("Audio · Taverna", "Personaggi · Deck", ...).
   function favPage() {
-    const seen = new Set(), buttons = [];
-    for (const p of state.pages) for (const s of p.sections) for (const b of s.buttons) {
-      const k = keyOf(b);
-      if (favs.has(k) && !seen.has(k)) { seen.add(k); buttons.push(b); }
+    const seen = new Set(), sections = [];
+    for (const p of state.pages) for (const s of p.sections) {
+      const buttons = s.buttons.filter(b => favs.has(keyOf(b)) && !seen.has(keyOf(b)));
+      buttons.forEach(b => seen.add(keyOf(b)));
+      if (buttons.length) sections.push({ title: `${p.title} · ${s.title}`, buttons });
     }
-    return { id: "fav", title: "★", sections: [{ title: "Preferiti", buttons }] };
+    return { id: "fav", title: "★", sections };
   }
 
   function render() {
@@ -126,7 +128,7 @@
       tabs.append(b);
     }
     const current = pages.find(p => p.id === tab);
-    if (tab === "fav" && !current.sections[0].buttons.length)
+    if (tab === "fav" && !current.sections.length)
       return page.append(el("p", "empty", "Tieni premuto un pulsante in qualsiasi tab per aggiungerlo ai preferiti."));
     if (!current?.sections.length) return page.append(el("p", "empty", "Niente da mostrare qui."));
     for (const s of current.sections) {
