@@ -30,8 +30,10 @@ Hooks.once("ready", () => {
     push();
   };
 
-  for (const doc of ["Playlist", "PlaylistSound", "Actor", "Macro", "Folder"])
+  for (const doc of ["Playlist", "PlaylistSound", "Actor", "Macro", "Folder", "Scene"])
     for (const op of ["create", "update", "delete"]) Hooks.on(`${op}${doc}`, push);
+  Hooks.on("pauseGame", push);
+  Hooks.on("canvasReady", push);
   Hooks.on("clientSettingChanged", key => { if (key.startsWith(MSB)) push(); });
 });
 
@@ -88,10 +90,30 @@ async function playSoundboardSlot(board, slot) {
   return playlist.playSound(sound);
 }
 
+// FXMaster: toggle on/off sulla scena che il GM sta guardando, con i parametri di default dell'effetto.
+function fxSections() {
+  const flags = canvas.scene?.flags.fxmaster ?? {};
+  const list = (registry, isOn, type) => Object.entries(registry ?? {})
+    .filter(([, cls]) => !cls.hidden)
+    .map(([key, cls]) => ({ label: game.i18n.localize(cls.label), active: isOn(key), action: { type, fx: key } }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  return [
+    { title: `Particelle — ${canvas.scene?.name ?? "nessuna scena"}`, buttons: list(CONFIG.fxmaster.particleEffects, k => `core_${k}` in (flags.effects ?? {}), "fx-particle") },
+    { title: "Filtri", buttons: list(CONFIG.fxmaster.filterEffects, k => k in (flags.filters ?? {}), "fx-filter") }
+  ];
+}
+
 function buildState() {
   const splash = game.modules.get("boss-splash")?.active;
   const portraits = game.modules.get("ginzzzu-portraits")?.active;
   const pages = [{
+    id: "scenes", title: "Scene",
+    sections: [{
+      title: "Navigazione",
+      buttons: game.scenes.filter(sc => sc.navigation).sort((a, b) => a.navOrder - b.navOrder)
+        .map(sc => ({ label: sc.navName || sc.name, img: sc.thumb, active: sc.active, action: { type: "scene", id: sc.id } }))
+    }]
+  }, {
     id: "audio", title: "Audio",
     sections: game.playlists.contents.map(p => ({
       title: p.name,
@@ -102,6 +124,7 @@ function buildState() {
     }))
   }];
   if (game.modules.get(MSB)?.active) pages.push({ id: "soundboard", title: "Soundboard", sections: soundboardSections() });
+  if (game.modules.get("fxmaster")?.active && canvas.scene) pages.push({ id: "fx", title: "Atmosfera", sections: fxSections() });
   pages.push({
     id: "actors", title: "Personaggi",
     sections: folderSections("Actor", get("actorFolder"), a => ({
@@ -116,7 +139,7 @@ function buildState() {
     id: "macros", title: "Macro",
     sections: folderSections("Macro", get("macroFolder"), m => ({ label: m.name, img: m.img, action: { type: "macro", id: m.id } }))
   });
-  return { origin: location.origin, pages };
+  return { origin: location.origin, paused: game.paused, pages };
 }
 
 /* ---------- azioni ricevute dalla deck ---------- */
@@ -133,6 +156,13 @@ const ACTIONS = {
     const s = need(p.sounds.get(sid), "Suono");
     return s.playing ? p.stopSound(s) : p.playSound(s);
   },
+  scene: ({ id }) => need(game.scenes.get(id), "Scena").activate(),
+  pause: () => game.togglePause(!game.paused, { broadcast: true }),
+  "fx-particle": ({ fx }) => {
+    const cls = need(CONFIG.fxmaster.particleEffects[fx], "Effetto");
+    Hooks.call("fxmaster.switchParticleEffect", { name: `core_${fx}`, type: fx, options: cls.default });
+  },
+  "fx-filter": ({ fx }) => FXMASTER.filters.switch(fx, fx, need(CONFIG.fxmaster.filterEffects[fx], "Filtro").default),
   stopAllAudio: () => Promise.all(game.playlists.playing.map(p => p.stopAll())),
   msb: ({ board, slot }) => playSoundboardSlot(Number(board), slot),
   show: ({ id }) => {

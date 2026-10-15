@@ -20,14 +20,16 @@ Telefono ──► relay Node (PC del GM, porta 3333) ◄── Foundry (browser
 3. **Impostazioni modulo** in Foundry: incolla il token. L'URL del relay di default è `http://localhost:3333`.
 4. **Telefono**: apri l'URL stampato, ad esempio `http://192.168.1.10:3333/?t=…`. Telefono e PC devono essere sulla stessa rete. Su iPad: *Condividi → Aggiungi a Home* per averlo a schermo intero.
 
-La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrimenti.
+La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrimenti. In basso ci sono sempre **Pausa/Riprendi** e **Stop audio**. Lo schermo del telefono resta acceso finché la deck è aperta.
 
 ## Cosa compare nella deck
 
 | Tab | Da dove arriva | Tap |
 |---|---|---|
+| Scene | scene presenti nella barra di navigazione | attiva la scena per tutti; quella attiva è evidenziata |
 | Audio | tutte le playlist | play/stop della playlist o del singolo suono |
 | Soundboard | board di *Soundboard & Soundpad (by Moulinette)*, se attivo: una sezione per board | play/stop dello slot, come il tasto in Moulinette. Le board sono salvate nel browser del GM: vanno create in quel browser |
+| Atmosfera | effetti di `fxmaster`, se attivo | accende/spegne particelle e filtri, con i parametri di default, sulla scena che il GM sta guardando |
 | Personaggi | cartella attori "Deck", sottocartelle comprese | toggle Show/Hide Character di `ginzzzu-portraits` (il tile evidenziato è il personaggio mostrato); senza quel modulo mostra l'immagine a tutti. Il tasto **Splash** usa `boss-splash`, se attivo |
 | Macro | cartella macro "Deck" | esegue la macro |
 
