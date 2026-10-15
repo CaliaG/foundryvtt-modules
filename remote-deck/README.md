@@ -34,6 +34,7 @@ La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrim
 | Atmosfera | effetti di `fxmaster`, se attivo | accende/spegne particelle e filtri, con i parametri di default, sulla scena che il GM sta guardando |
 | Personaggi | cartella attori "Deck", sottocartelle comprese | toggle Show/Hide Character di `ginzzzu-portraits` (il tile evidenziato è il personaggio mostrato); senza quel modulo mostra l'immagine a tutti. Il tasto **Splash** usa `boss-splash`, se attivo |
 | Macro | cartella macro "Deck", sottocartelle comprese | esegue la macro |
+| Volti | cartella attori "Volti", se esiste | cambia la **tua faccia in webcam** con quella del personaggio (Deep-Live-Cam, vedi sotto); **Faccia reale** o un secondo tap tornano normali |
 
 Personaggi e Macro: ogni sottocartella di "Deck" diventa una sezione dello stesso tab, nell'ordine della sidebar di Foundry.
 
@@ -71,3 +72,38 @@ Configurazione usata su `richiamodicthulhu.sytes.net`: il relay gira accanto a F
   Il token si trova in `~/.remote-deck-token`, cioè fuori da `Data`, che è servita pubblicamente. Dopo aver aggiornato il modulo lancia `pm2 restart remote-deck`.
 - **Impostazioni modulo**: URL del relay `https://richiamodicthulhu.sytes.net/deck`.
 - **Telefono**: `https://richiamodicthulhu.sytes.net/deck/?t=<token>`. Funziona da qualsiasi rete.
+
+## Volti in webcam (Deep-Live-Cam)
+
+Toccando un personaggio nel tab **Volti**, la tua faccia in webcam diventa la sua. Lo scambio lo fa [Deep-Live-Cam](https://github.com/hacksider/Deep-Live-Cam), che gira sul **tuo Mac**. Lo script [`face/remote_deck_face.py`](face/remote_deck_face.py) lo avvia e segue la deck:
+- volto scelto → scarica il ritratto dell'attore e lo imposta come sorgente;
+- "Faccia reale" → la webcam passa invariata.
+
+```
+deck ─► Foundry (volto corrente) ─► relay ─► remote_deck_face.py ─► Deep-Live-Cam "Live Preview"
+                                                                        └► OBS Window Capture ─► OBS Virtual Camera ─► vdo.ninja
+```
+
+1. **Installazione** (una volta), in `~/dev/personal/Deep-Live-Cam`:
+   ```bash
+   git clone https://github.com/hacksider/Deep-Live-Cam && cd Deep-Live-Cam
+   python3.14 -m venv .venv && .venv/bin/pip install -r requirements.txt
+   curl -L -o models/inswapper_128.onnx "https://huggingface.co/hacksider/deep-live-cam/resolve/main/inswapper_128.onnx?download=true"
+   ```
+   I modelli per riconoscere i volti (insightface `buffalo_l`) li scarica DLC al primo avvio.
+2. **Foundry**: crea una cartella attori **"Volti"** (il nome si cambia nelle impostazioni) e mettici i personaggi da interpretare.
+3. **Avvio** (dalla cartella di Deep-Live-Cam):
+   ```bash
+   DECK_URL=https://richiamodicthulhu.sytes.net/deck DECK_TOKEN=<token> .venv/bin/python <repo>/remote-deck/face/remote_deck_face.py --dlc . --execution-provider coreml
+   ```
+   Nella finestra di Deep-Live-Cam scegli la webcam e premi **Live**. Lascia disattivato "Map faces". Al primo avvio macOS chiede il permesso per la fotocamera.
+4. **OBS**: *Sorgente → Cattura finestra* "Live Preview", poi **Avvia videocamera virtuale**.
+5. **vdo.ninja**: nel link di invio (push) scegli come camera **"OBS Virtual Camera"**. Se serve, aggiungi `&width=1280&height=720&framerate=30`.
+
+Note:
+- **Ritratti**: servono volti frontali, ben illuminati e realistici. Con disegni o stili molto illustrati il volto spesso non viene riconosciuto e la webcam resta invariata. Gli SVG (es. l'icona di default) non vanno bene: usa PNG, JPG o WEBP.
+- **Cache**: i ritratti vengono salvati in `~/.remote-deck/faces/`.
+- **Ripresa automatica**: lo script si ricollega da solo se il relay cade, e mantiene il volto attivo anche se ricarichi Foundry.
+- **Volti da usare**: solo volti di personaggi inventati o generati, o di persone che hanno dato il consenso.
+- **Licenze**: Deep-Live-Cam (AGPL-3.0) e i suoi modelli (uso non commerciale) non sono inclusi in questo repo.
+- **Aggiornamenti di Deep-Live-Cam**: lo script usa nomi interni di DLC (`modules.globals.source_path`, `face_swapper.swap_face`). Se un aggiornamento li cambia, lo script si ferma all'avvio con un messaggio chiaro. Verificato con DLC `a924275`.

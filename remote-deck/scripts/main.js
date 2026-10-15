@@ -38,6 +38,9 @@ Hooks.once("init", () => {
   reg("token", "Token", "Il token stampato dal relay all'avvio.", "");
   reg("actorFolder", "Cartella personaggi", "Nome della cartella di attori mostrata nella deck.", "Deck");
   reg("macroFolder", "Cartella macro", "Nome della cartella di macro mostrata nella deck.", "Deck");
+  reg("faceFolder", "Cartella volti", "Cartella di attori da \"interpretare\" in webcam con Deep-Live-Cam (vedi README).", "Volti");
+  // Volto attivo in webcam: client, così sopravvive a un reload del GM.
+  game.settings.register(ID, "currentFace", { scope: "client", config: false, type: String, default: "" });
   game.settings.registerMenu(ID, "qr", {
     name: "Telefono", label: "QR per il telefono", hint: "Inquadra il QR con il telefono per aprire la deck.",
     icon: "fas fa-qrcode", type: PhoneQR, restricted: true
@@ -192,7 +195,16 @@ function buildState() {
     id: "macros", title: "Macro",
     sections: folderSections("Macro", get("macroFolder"), m => ({ label: m.name, img: m.img, action: { type: "macro", id: m.id } }))
   });
-  return { origin: location.origin, paused: game.paused, pages };
+  const faceRoot = findFolder("Actor", get("faceFolder"));
+  const face = game.actors.get(get("currentFace"));
+  if (faceRoot) pages.push({
+    id: "faces", title: "Volti",
+    sections: [
+      { title: "Webcam", buttons: [{ label: "Faccia reale", active: !face, action: { type: "face", id: null } }] },
+      ...treeSections(faceRoot, a => ({ label: a.name, img: a.img, active: face?.id === a.id, action: { type: "face", id: a.id } }))
+    ]
+  });
+  return { origin: location.origin, paused: game.paused, face: face ? { id: face.id, img: face.img } : null, pages };
 }
 
 /* ---------- azioni ricevute dalla deck ---------- */
@@ -231,6 +243,11 @@ const ACTIONS = {
   },
   portrait: ({ id }) => globalThis.GinzzzuPortraits?.togglePortrait(need(game.actors.get(id), "Attore")),
   splash: ({ id }) => game.bossSplash?.splashBoss({ actor: need(game.actors.get(id), "Attore").id }),
+  // Toccare il volto già attivo (o "Faccia reale") torna alla faccia vera; l'agente Deep-Live-Cam segue state.face.
+  face: ({ id }) => {
+    const next = id && id !== get("currentFace") ? need(game.actors.get(id), "Attore").id : "";
+    return game.settings.set(ID, "currentFace", next);
+  },
   macro: ({ id }) => need(game.macros.get(id), "Macro").execute()
 };
 
