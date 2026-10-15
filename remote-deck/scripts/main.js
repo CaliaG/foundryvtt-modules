@@ -73,12 +73,38 @@ Hooks.once("ready", () => {
 
 /* ---------- stato inviato alla deck ---------- */
 
+// Stesso ordine della sidebar: alfabetico o manuale, secondo la cartella che li contiene.
+const sortIn = (folder, docs) => [...docs].sort(folder.sorting === "a"
+  ? (a, b) => a.name.localeCompare(b.name)
+  : (a, b) => a.sort - b.sort);
+const subfolders = folder => sortIn(folder, folder.getSubfolders());
+const walk = folder => [folder, ...subfolders(folder).flatMap(walk)];
+const findFolder = (type, name) => {
+  const all = game.folders.filter(f => f.type === type && f.name === name);
+  return all.find(f => !f.folder) ?? all[0]; // preferisce quella al primo livello
+};
+const missing = (type, name) => [{ title: `Crea una cartella ${type} chiamata "${name}"`, buttons: [] }];
+
+// Una sezione per la cartella e per ogni sua sottocartella (ricorsivo).
+const treeSections = (folder, toButton) => walk(folder)
+  .map(f => ({ title: f.name, buttons: sortIn(f, f.contents).map(toButton) }))
+  .filter(s => s.buttons.length);
+
 function folderSections(type, name, toButton) {
-  const root = game.folders.find(f => f.type === type && f.name === name);
-  if (!root) return [{ title: `Crea una cartella ${type} chiamata "${name}"`, buttons: [] }];
-  return [root, ...root.getSubfolders(true)]
-    .map(f => ({ title: f.name, buttons: f.contents.map(toButton) }))
-    .filter(s => s.buttons.length);
+  const root = findFolder(type, name);
+  return root ? treeSections(root, toButton) : missing(type, name);
+}
+
+// Macro: le macro nella cartella "Deck" vanno nel tab "Macro"; ogni sottocartella diretta diventa un tab a sé
+// (es. Deck/Combattimento, Deck/Indagine), con le sue sottocartelle come sezioni.
+function macroPages() {
+  const name = get("macroFolder"), root = findFolder("Macro", name);
+  if (!root) return [{ id: "macros", title: "Macro", sections: missing("Macro", name) }];
+  const toButton = m => ({ label: m.name, img: m.img, action: { type: "macro", id: m.id } });
+  const pages = subfolders(root).map(f => ({ id: `macro-${f.id}`, title: f.name, sections: treeSections(f, toButton) }));
+  if (root.contents.length || !pages.length)
+    pages.unshift({ id: "macros", title: "Macro", sections: [{ title: root.name, buttons: sortIn(root, root.contents).map(toButton) }] });
+  return pages;
 }
 
 // Soundboard & Soundpad (by Moulinette): nessuna API pubblica, leggiamo le sue board (setting client del GM)
@@ -174,10 +200,7 @@ function buildState() {
       alt: splash ? { label: "Splash", action: { type: "splash", id: a.id } } : undefined
     }))
   });
-  pages.push({
-    id: "macros", title: "Macro",
-    sections: folderSections("Macro", get("macroFolder"), m => ({ label: m.name, img: m.img, action: { type: "macro", id: m.id } }))
-  });
+  pages.push(...macroPages());
   return { origin: location.origin, paused: game.paused, pages };
 }
 

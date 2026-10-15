@@ -33,7 +33,7 @@ La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrim
 | Soundboard | board di *Soundboard & Soundpad (by Moulinette)*, se attivo: una sezione per board | play/stop dello slot, come il tasto in Moulinette. Le board sono salvate nel browser del GM: vanno create in quel browser |
 | Atmosfera | effetti di `fxmaster`, se attivo | accende/spegne particelle e filtri, con i parametri di default, sulla scena che il GM sta guardando |
 | Personaggi | cartella attori "Deck", sottocartelle comprese | toggle Show/Hide Character di `ginzzzu-portraits` (il tile evidenziato è il personaggio mostrato); senza quel modulo mostra l'immagine a tutti. Il tasto **Splash** usa `boss-splash`, se attivo |
-| Macro | cartella macro "Deck" | esegue la macro |
+| Macro | cartella macro "Deck" | esegue la macro. Ogni **sottocartella** diretta (es. `Deck/Combattimento`, `Deck/Indagine`) diventa un **tab** a sé, e le sue sottocartelle diventano sezioni. Ordine come nella sidebar di Foundry |
 
 I nomi delle cartelle si cambiano nelle impostazioni. Con le macro puoi integrare qualsiasi altro modulo (Syrinscape, Moulinette, ecc.).
 
