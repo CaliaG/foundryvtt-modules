@@ -32,8 +32,7 @@ Hooks.once("ready", () => {
 
   for (const doc of ["Playlist", "PlaylistSound", "Actor", "Macro", "Folder"])
     for (const op of ["create", "update", "delete"]) Hooks.on(`${op}${doc}`, push);
-  Hooks.on("soundscape", push);
-  Hooks.on("setSoundscape", push);
+  Hooks.on("clientSettingChanged", key => { if (key.startsWith(MSB)) push(); });
 });
 
 /* ---------- stato inviato alla deck ---------- */
@@ -46,20 +45,47 @@ function folderSections(type, name, toButton) {
     .filter(s => s.buttons.length);
 }
 
-function soundscapeSections() {
-  const ss = game.soundscape;
-  const all = game.settings.get("soundscape", "soundscapes") ?? [];
-  const scenes = all.map((s, n) => ({
-    label: s?.name || `Soundscape ${n + 1}`,
-    active: ss.playing && ss.currentSoundscape === n,
-    action: { type: "ss-scene", n }
-  }));
-  scenes.push({ label: "▶ Start", action: { type: "ss-start" } }, { label: "■ Stop", action: { type: "ss-stop" } });
-  const pads = (all[ss.currentSoundscape]?.soundboard ?? [])
-    .map((p, n) => p?.name && { label: p.name, img: p.imageSrc, action: { type: "ss-pad", n } })
-    .filter(Boolean);
-  pads.push({ label: "■ Stop soundboard", action: { type: "ss-padStop" } });
-  return [{ title: "Soundscape", buttons: scenes }, { title: "Soundboard", buttons: pads }];
+// Soundboard & Soundpad (by Moulinette): nessuna API pubblica, leggiamo le sue board (setting client del GM)
+// e suoniamo come fa lui, nella playlist "⚙ Soundboard: <utente>".
+const MSB = "moulinette-soundboards";
+const msbBoards = () => { const d = game.settings.get(MSB, "soundboards"); return d.boards ?? [d]; };
+const msbPlaylistName = () => `${game.i18n.localize("MOUSND.soundboard_name")}: ${game.user.name}`;
+const fileName = path => decodeURIComponent(path.split("/").pop()).replace(/\.[^/.]+$/, "");
+
+function soundboardSections() {
+  const playing = new Set(game.playlists.getName(msbPlaylistName())?.sounds.filter(s => s.playing).map(s => s.path));
+  return msbBoards().map((b, board) => ({
+    title: b.name || "Default",
+    buttons: Object.keys(b).filter(k => k.startsWith("audio-"))
+      .sort((x, y) => x.slice(6) - y.slice(6))
+      .map(k => {
+        const a = b[k], paths = [].concat(a.path ?? []);
+        return {
+          label: a.name || fileName(paths[0] ?? "?"),
+          img: !a.faIcon && a.icon ? a.icon : undefined,
+          active: paths.some(p => playing.has(p)),
+          action: { type: "msb", board, slot: k.slice(6) }
+        };
+      })
+  })).filter(s => s.buttons.length);
+}
+
+async function playSoundboardSlot(board, slot) {
+  const audio = need(msbBoards()[board]?.[`audio-${slot}`], "Suono della soundboard");
+  const paths = [].concat(audio.path ?? []);
+  let playlist = game.playlists.getName(msbPlaylistName());
+  const current = playlist?.sounds.find(s => s.playing && paths.includes(s.path));
+  if (current) return playlist.stopSound(current);
+  if (!playlist) {
+    const folder = await game.modules.get("moulinette")?.utils?.foundry.getOrCreateFolder("Playlist", "Moulinette");
+    playlist = await Playlist.create({ name: msbPlaylistName(), mode: CONST.PLAYLIST_MODES.DISABLED, folder });
+  }
+  const path = need(paths[Math.floor(Math.random() * paths.length)], "File audio");
+  const volume = Number(audio.volume ?? 1);
+  const sound = playlist.sounds.find(s => s.path === path)
+    ?? (await playlist.createEmbeddedDocuments("PlaylistSound", [{ name: fileName(path), path, volume }]))[0];
+  await sound.update({ volume, repeat: !!audio.repeat, channel: audio.channel ?? "environment", fade: audio.fade });
+  return playlist.playSound(sound);
 }
 
 function buildState() {
@@ -75,7 +101,7 @@ function buildState() {
       ]
     }))
   }];
-  if (game.soundscape) pages.push({ id: "soundscape", title: "Soundscape", sections: soundscapeSections() });
+  if (game.modules.get(MSB)?.active) pages.push({ id: "soundboard", title: "Soundboard", sections: soundboardSections() });
   pages.push({
     id: "actors", title: "Personaggi",
     sections: folderSections("Actor", get("actorFolder"), a => ({
@@ -108,11 +134,7 @@ const ACTIONS = {
     return s.playing ? p.stopSound(s) : p.playSound(s);
   },
   stopAllAudio: () => Promise.all(game.playlists.playing.map(p => p.stopAll())),
-  "ss-scene": ({ n }) => game.soundscape?.setSoundscape(Number(n), true),
-  "ss-start": () => game.soundscape?.start(),
-  "ss-stop": () => game.soundscape?.stop(),
-  "ss-pad": ({ n }) => game.soundscape?.soundboard.playSound(Number(n)),
-  "ss-padStop": () => game.soundscape?.soundboard.stopAll(),
+  msb: ({ board, slot }) => playSoundboardSlot(Number(board), slot),
   show: ({ id }) => {
     const a = need(game.actors.get(id), "Attore");
     const popout = new foundry.applications.apps.ImagePopout({ src: a.img, uuid: a.uuid, window: { title: a.name } });

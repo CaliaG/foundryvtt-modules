@@ -88,7 +88,7 @@
         const cell = el("div", "cell");
         const t = el("button", "tile " + (btn.img ? "img" : "noimg") + (btn.active ? " on" : ""));
         t.append(el("span", "", btn.label));
-        if (btn.img) t.style.backgroundImage = `url("img?${q}&p=${encodeURIComponent(btn.img)}")`;
+        if (btn.img) t.style.backgroundImage = `url("${/^https:/.test(btn.img) ? btn.img : `img?${q}&p=${encodeURIComponent(btn.img)}`}")`;
         t.onclick = () => act(btn.action);
         cell.append(t);
         if (btn.alt) {

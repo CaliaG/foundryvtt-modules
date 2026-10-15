@@ -1,6 +1,6 @@
 # Remote Deck
 
-Usa smartphone o iPad come una Stream Deck per FoundryVTT v13: playlist e suoni, Soundscape, personaggi (immagine condivisa o Boss Splash) e macro.
+Usa smartphone o iPad come una Stream Deck per FoundryVTT v13: playlist e suoni, soundboard di Moulinette, personaggi (Ginzzzu Portraits o Boss Splash) e macro.
 
 ```
 Telefono ──► relay Node (PC del GM, porta 3333) ◄── Foundry (browser del GM, modulo)
@@ -27,7 +27,7 @@ La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrim
 | Tab | Da dove arriva | Tap |
 |---|---|---|
 | Audio | tutte le playlist | play/stop della playlist o del singolo suono |
-| Soundscape | modulo `soundscape`, se attivo | cambia scena, start/stop, pad del soundboard |
+| Soundboard | board di *Soundboard & Soundpad (by Moulinette)*, se attivo: una sezione per board | play/stop dello slot, come il tasto in Moulinette. Le board sono salvate nel browser del GM: vanno create in quel browser |
 | Personaggi | cartella attori "Deck", sottocartelle comprese | toggle Show/Hide Character di `ginzzzu-portraits` (il tile evidenziato è il personaggio mostrato); senza quel modulo mostra l'immagine a tutti. Il tasto **Splash** usa `boss-splash`, se attivo |
 | Macro | cartella macro "Deck" | esegue la macro |
 
