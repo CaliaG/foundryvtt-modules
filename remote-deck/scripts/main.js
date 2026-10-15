@@ -90,15 +90,9 @@ const treeSections = (folder, toButton) => walk(folder)
   .map(f => ({ title: f.name, buttons: sortIn(f, f.contents).map(toButton) }))
   .filter(s => s.buttons.length);
 
-// Cartella "Deck" (attori o macro): i documenti diretti vanno nel tab principale; ogni sottocartella diretta
-// diventa un tab a sé (es. Deck/Combattimento), con le sue sottocartelle come sezioni.
-function folderPages(type, name, id, title, toButton) {
+function folderSections(type, name, toButton) {
   const root = findFolder(type, name);
-  if (!root) return [{ id, title, sections: missing(type, name) }];
-  const pages = subfolders(root).map(f => ({ id: `${id}-${f.id}`, title: f.name, sections: treeSections(f, toButton) }));
-  if (root.contents.length || !pages.length)
-    pages.unshift({ id, title, sections: [{ title: root.name, buttons: sortIn(root, root.contents).map(toButton) }] });
-  return pages;
+  return root ? treeSections(root, toButton) : missing(type, name);
 }
 
 // Soundboard & Soundpad (by Moulinette): nessuna API pubblica, leggiamo le sue board (setting client del GM)
@@ -184,15 +178,20 @@ function buildState() {
   }];
   if (game.modules.get(MSB)?.active) pages.push({ id: "soundboard", title: "Soundboard", sections: soundboardSections() });
   if (game.modules.get("fxmaster")?.active && canvas.scene) pages.push({ id: "fx", title: "Atmosfera", sections: fxSections() });
-  pages.push(...folderPages("Actor", get("actorFolder"), "actors", "Personaggi", a => ({
-    label: a.name, img: a.img,
-    ...(portraits
-      ? { active: !!a.getFlag("ginzzzu-portraits", "portraitShown"), action: { type: "portrait", id: a.id } }
-      : { action: { type: "show", id: a.id } }),
-    alt: splash ? { label: "Splash", action: { type: "splash", id: a.id } } : undefined
-  })));
-  pages.push(...folderPages("Macro", get("macroFolder"), "macros", "Macro",
-    m => ({ label: m.name, img: m.img, action: { type: "macro", id: m.id } })));
+  pages.push({
+    id: "actors", title: "Personaggi",
+    sections: folderSections("Actor", get("actorFolder"), a => ({
+      label: a.name, img: a.img,
+      ...(portraits
+        ? { active: !!a.getFlag("ginzzzu-portraits", "portraitShown"), action: { type: "portrait", id: a.id } }
+        : { action: { type: "show", id: a.id } }),
+      alt: splash ? { label: "Splash", action: { type: "splash", id: a.id } } : undefined
+    }))
+  });
+  pages.push({
+    id: "macros", title: "Macro",
+    sections: folderSections("Macro", get("macroFolder"), m => ({ label: m.name, img: m.img, action: { type: "macro", id: m.id } }))
+  });
   return { origin: location.origin, paused: game.paused, pages };
 }
 
