@@ -18,7 +18,8 @@ Telefono ──► relay Node (PC del GM, porta 3333) ◄── Foundry (browser
    ```
    Il relay stampa il token e gli URL da aprire sul telefono. Il token viene salvato in `server/.deck-token`, che non va condiviso. In alternativa puoi impostarlo con la variabile d'ambiente `DECK_TOKEN`; la porta si cambia con `PORT`.
 3. **Impostazioni modulo** in Foundry: incolla il token. L'URL del relay di default è `http://localhost:3333`.
-4. **Telefono**: apri l'URL stampato, ad esempio `http://192.168.1.10:3333/?t=…`. Telefono e PC devono essere sulla stessa rete. Su iPad: *Condividi → Aggiungi a Home* per averlo a schermo intero.
+4. **Telefono**: in Foundry vai su *Impostazioni → Remote Deck → QR per il telefono* e inquadra il QR. In alternativa apri l'URL stampato dal relay.
+5. **Installa come app**: con la deck aperta tramite l'URL con il token, scegli *Condividi → Aggiungi a Home* su iPhone/iPad, oppure *Installa app* su Android/Chrome. Si apre a schermo intero con la sua icona.
 
 La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrimenti. In basso ci sono sempre **Pausa/Riprendi** e **Stop audio**. Lo schermo del telefono resta acceso finché la deck è aperta.
 
@@ -27,7 +28,8 @@ La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrim
 | Tab | Da dove arriva | Tap |
 |---|---|---|
 | Scene | scene presenti nella barra di navigazione | attiva la scena per tutti; quella attiva è evidenziata |
-| Audio | tutte le playlist | play/stop della playlist o del singolo suono |
+| ★ | i tuoi preferiti | **tieni premuto** un pulsante in qualsiasi tab per aggiungerlo o toglierlo; sono salvati sul telefono |
+| Audio | tutte le playlist | play/stop della playlist o del singolo suono; lo slider accanto al titolo regola il volume della playlist per tutti |
 | Soundboard | board di *Soundboard & Soundpad (by Moulinette)*, se attivo: una sezione per board | play/stop dello slot, come il tasto in Moulinette. Le board sono salvate nel browser del GM: vanno create in quel browser |
 | Atmosfera | effetti di `fxmaster`, se attivo | accende/spegne particelle e filtri, con i parametri di default, sulla scena che il GM sta guardando |
 | Personaggi | cartella attori "Deck", sottocartelle comprese | toggle Show/Hide Character di `ginzzzu-portraits` (il tile evidenziato è il personaggio mostrato); senza quel modulo mostra l'immagine a tutti. Il tasto **Splash** usa `boss-splash`, se attivo |

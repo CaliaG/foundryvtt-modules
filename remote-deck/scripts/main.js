@@ -1,5 +1,35 @@
+import qrcode from "./vendor/qrcode.mjs";
+
 const ID = "remote-deck";
 const get = key => game.settings.get(ID, key);
+const phoneUrl = () => `${get("serverUrl").replace(/\/$/, "")}/?t=${encodeURIComponent(get("token"))}`;
+
+// Finestra con il QR da inquadrare col telefono (aperta dal pulsante nelle impostazioni del modulo).
+class PhoneQR extends foundry.applications.api.ApplicationV2 {
+  static DEFAULT_OPTIONS = { id: "remote-deck-qr", window: { title: "Remote Deck — telefono" }, position: { width: 340 } };
+
+  async _renderHTML() {
+    const div = document.createElement("div");
+    div.style.cssText = "display:flex; flex-direction:column; gap:8px; text-align:center;";
+    if (!get("token")) {
+      div.textContent = "Imposta prima il token nelle impostazioni del modulo.";
+      return div;
+    }
+    const qr = qrcode(0, "M");
+    qr.addData(phoneUrl());
+    qr.make();
+    const img = Object.assign(document.createElement("img"), { src: qr.createDataURL(8, 2), alt: "QR Remote Deck" });
+    img.style.cssText = "width:100%; image-rendering:pixelated; border:0; background:#fff;";
+    const link = Object.assign(document.createElement("code"), { textContent: phoneUrl() });
+    link.style.cssText = "word-break:break-all; user-select:all;";
+    div.append(img, link);
+    if (/\/\/(localhost|127\.)/.test(get("serverUrl")))
+      div.append(Object.assign(document.createElement("p"), { textContent: "Attenzione: l'URL del relay è localhost, il telefono non può raggiungerlo." }));
+    return div;
+  }
+
+  _replaceHTML(result, content) { content.replaceChildren(result); }
+}
 
 Hooks.once("init", () => {
   const reg = (key, name, hint, def) =>
@@ -8,6 +38,10 @@ Hooks.once("init", () => {
   reg("token", "Token", "Il token stampato dal relay all'avvio.", "");
   reg("actorFolder", "Cartella personaggi", "Nome della cartella di attori mostrata nella deck.", "Deck");
   reg("macroFolder", "Cartella macro", "Nome della cartella di macro mostrata nella deck.", "Deck");
+  game.settings.registerMenu(ID, "qr", {
+    name: "Telefono", label: "QR per il telefono", hint: "Inquadra il QR con il telefono per aprire la deck.",
+    icon: "fas fa-qrcode", type: PhoneQR, restricted: true
+  });
 });
 
 Hooks.once("ready", () => {
@@ -117,6 +151,11 @@ function buildState() {
     id: "audio", title: "Audio",
     sections: game.playlists.contents.map(p => ({
       title: p.name,
+      // Volume della playlist = volume dei suoi suoni (sincronizzato a tutti), in scala slider 0..1.
+      volume: p.sounds.size ? {
+        value: foundry.audio.AudioHelper.volumeToInput(Math.max(...p.sounds.map(s => s.volume))),
+        action: { type: "volume", id: p.id }
+      } : undefined,
       buttons: [
         { label: `Playlist: ${p.name}`, active: p.playing, action: { type: "playlist", id: p.id } },
         ...p.sounds.contents.map(s => ({ label: s.name, active: s.playing, action: { type: "sound", id: p.id, sid: s.id } }))
@@ -155,6 +194,11 @@ const ACTIONS = {
     const p = need(game.playlists.get(id), "Playlist");
     const s = need(p.sounds.get(sid), "Suono");
     return s.playing ? p.stopSound(s) : p.playSound(s);
+  },
+  volume: ({ id, v }) => {
+    const p = need(game.playlists.get(id), "Playlist");
+    const volume = foundry.audio.AudioHelper.inputToVolume(Math.min(1, Math.max(0, Number(v) || 0)));
+    return p.updateEmbeddedDocuments("PlaylistSound", p.sounds.map(s => ({ _id: s.id, volume })));
   },
   scene: ({ id }) => need(game.scenes.get(id), "Scena").activate(),
   pause: () => game.togglePause(!game.paused, { broadcast: true }),

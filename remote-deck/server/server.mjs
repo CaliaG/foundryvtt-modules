@@ -8,6 +8,13 @@ import { fileURLToPath } from "node:url";
 
 const DIR = fileURLToPath(new URL(".", import.meta.url));
 const MAX_BODY = 1024 * 1024;
+const PUBLIC = {
+  "index.html": "text/html; charset=utf-8",
+  "manifest.webmanifest": "application/manifest+json",
+  "icon-192.png": "image/png",
+  "icon-512.png": "image/png",
+  "apple-touch-icon.png": "image/png"
+};
 
 function loadToken() {
   if (process.env.DECK_TOKEN) return process.env.DECK_TOKEN;
@@ -39,9 +46,11 @@ export function createServer(token) {
     const url = new URL(req.url, "http://x");
     const end = (code, body = "") => { res.statusCode = code; res.end(body); };
 
-    if (req.method === "GET" && url.pathname === "/") {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      return res.end(fs.readFileSync(DIR + "public/index.html"));
+    // File pubblici della pagina (nessun segreto): la pagina, il manifest e le icone per "Aggiungi a Home".
+    const file = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
+    if (req.method === "GET" && PUBLIC[file]) {
+      res.setHeader("Content-Type", PUBLIC[file]);
+      return res.end(fs.readFileSync(DIR + "public/" + file));
     }
 
     const given = Buffer.from(url.searchParams.get("t") ?? "");

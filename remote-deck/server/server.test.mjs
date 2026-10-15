@@ -34,6 +34,8 @@ test("relay", async () => {
   const base = `http://localhost:${server.address().port}`;
   try {
     assert.equal((await fetch(`${base}/events?role=deck&t=wrong`)).status, 401);
+    assert.equal((await fetch(`${base}/manifest.webmanifest`)).headers.get("content-type"), "application/manifest+json");
+    assert.equal((await fetch(`${base}/server.mjs`)).status, 401);
     assert.equal(await post(base, "/action", { type: "x" }), 503);
 
     const deck = sse(base, "deck");

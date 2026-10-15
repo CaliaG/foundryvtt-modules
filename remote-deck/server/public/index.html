@@ -6,21 +6,27 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Deck">
 <meta name="theme-color" content="#14110f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Remote Deck</title>
 <style>
   :root { --bg:#14110f; --panel:#221d19; --btn:#2e2722; --text:#efe6d8; --muted:#9a8f80; --accent:#e0a040; --on:#3f7d4a; --bad:#b0413e; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.3 system-ui,-apple-system,sans-serif;
          padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(80px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
-         user-select:none; -webkit-user-select:none; }
+         user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   header { position:sticky; top:0; z-index:2; background:var(--bg); display:flex; gap:6px; padding:10px 16px; overflow-x:auto; align-items:center; }
   header button { flex:none; border:0; border-radius:999px; padding:10px 16px; background:var(--panel); color:var(--text); font:inherit; font-weight:600; }
   header button.sel { background:var(--accent); color:#1a1208; }
   header { border-bottom:3px solid var(--bad); }
   header.ok { border-bottom-color:var(--on); }
   main { padding:0 16px; }
-  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 8px; }
+  .head { display:flex; align-items:center; gap:12px; margin:18px 0 8px; }
+  h2 { flex:none; max-width:60%; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .head input[type=range] { flex:1; min-width:0; accent-color:var(--accent); height:28px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
   .cell { position:relative; }
   .tile { width:100%; aspect-ratio:1; border:0; border-radius:14px; background:var(--btn) center/cover no-repeat; color:var(--text);
@@ -30,6 +36,7 @@
   .tile.img span { background:rgba(0,0,0,.65); border-radius:6px; padding:2px 6px; }
   .tile:active { transform:scale(.95); }
   .tile.on { box-shadow:inset 0 0 0 3px var(--accent); background-color:var(--on); }
+  .cell.fav::before { content:"★"; position:absolute; top:6px; left:8px; z-index:1; color:var(--accent); text-shadow:0 0 3px #000; pointer-events:none; }
   .alt { position:absolute; top:6px; right:6px; border:0; border-radius:8px; padding:6px 8px; background:var(--bad); color:#fff; font:inherit; font-size:12px; }
   .empty { color:var(--muted); padding:24px 0; }
   #bar { position:fixed; left:16px; right:16px; bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:10px; }
@@ -48,13 +55,19 @@
 <div id="bar"><button id="pause">⏸ Pausa</button><button id="stop">■ Stop audio</button></div>
 <div id="toast"></div>
 <script>
-  const params = new URLSearchParams(location.search);
-  let token = params.get("t");
-  try { token ? localStorage.setItem("deckToken", token) : (token = localStorage.getItem("deckToken")); } catch {}
-  let tab = null; try { tab = localStorage.getItem("deckTab"); } catch {}
+  // localStorage può mancare (navigazione privata): tutto funziona anche senza, solo non viene ricordato.
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+  };
+  let token = new URLSearchParams(location.search).get("t");
+  token ? store.set("deckToken", token) : (token = store.get("deckToken"));
+  let tab = store.get("deckTab");
+  let favs = new Set(); try { favs = new Set(JSON.parse(store.get("deckFavs") ?? "[]")); } catch {}
   let state = null, foundry = false, sse = false;
   const q = "t=" + encodeURIComponent(token ?? "");
   const $ = id => document.getElementById(id);
+  const keyOf = btn => JSON.stringify(btn.action);
 
   function toast(msg) { $("toast").textContent = msg; $("toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("show"), 1800); }
 
@@ -66,7 +79,35 @@
     } catch { toast("Relay non raggiungibile"); }
   }
 
+  function toggleFav(btn) {
+    const k = keyOf(btn);
+    favs.has(k) ? favs.delete(k) : favs.add(k);
+    store.set("deckFavs", JSON.stringify([...favs]));
+    navigator.vibrate?.(40);
+    toast(favs.has(k) ? `★ ${btn.label} aggiunto ai preferiti` : `${btn.label} rimosso dai preferiti`);
+    render();
+  }
+
+  // Tap = azione, pressione lunga (0,5 s) = aggiungi/togli dai preferiti.
+  function bindPress(tile, btn) {
+    let timer, long = false;
+    const cancel = () => clearTimeout(timer);
+    tile.onpointerdown = () => { long = false; timer = setTimeout(() => { long = true; toggleFav(btn); }, 500); };
+    tile.onpointerup = tile.onpointerleave = tile.onpointercancel = cancel;
+    tile.oncontextmenu = e => e.preventDefault();
+    tile.onclick = () => { if (!long) act(btn.action); };
+  }
+
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+
+  function favPage() {
+    const seen = new Set(), buttons = [];
+    for (const p of state.pages) for (const s of p.sections) for (const b of s.buttons) {
+      const k = keyOf(b);
+      if (favs.has(k) && !seen.has(k)) { seen.add(k); buttons.push(b); }
+    }
+    return { id: "fav", title: "★", sections: [{ title: "Preferiti", buttons }] };
+  }
 
   function render() {
     $("tabs").classList.toggle("ok", sse && foundry);
@@ -75,26 +116,37 @@
     const tabs = $("tabs"), page = $("page");
     tabs.replaceChildren();
     page.replaceChildren();
-    if (!token) return page.append(el("p", "empty", "Token mancante: apri l'URL stampato dal relay."));
+    if (!token) return page.append(el("p", "empty", "Token mancante: apri l'URL (o inquadra il QR) mostrato in Foundry."));
     if (!state) return page.append(el("p", "empty", foundry ? "Caricamento…" : "In attesa di Foundry…"));
-    if (!state.pages.some(p => p.id === tab)) tab = state.pages[0]?.id;
-    for (const p of state.pages) {
+    const pages = [favPage(), ...state.pages];
+    if (!pages.some(p => p.id === tab)) tab = state.pages[0]?.id;
+    for (const p of pages) {
       const b = el("button", p.id === tab ? "sel" : "", p.title);
-      b.onclick = () => { tab = p.id; try { localStorage.setItem("deckTab", tab); } catch {} render(); };
+      b.onclick = () => { tab = p.id; store.set("deckTab", tab); render(); };
       tabs.append(b);
     }
-    const current = state.pages.find(p => p.id === tab);
+    const current = pages.find(p => p.id === tab);
+    if (tab === "fav" && !current.sections[0].buttons.length)
+      return page.append(el("p", "empty", "Tieni premuto un pulsante in qualsiasi tab per aggiungerlo ai preferiti."));
     if (!current?.sections.length) return page.append(el("p", "empty", "Niente da mostrare qui."));
     for (const s of current.sections) {
-      page.append(el("h2", "", s.title));
+      const head = el("div", "head");
+      head.append(el("h2", "", s.title));
+      if (s.volume) {
+        const range = el("input");
+        Object.assign(range, { type: "range", min: 0, max: 1, step: 0.01, value: s.volume.value, title: "Volume" });
+        range.onchange = () => act({ ...s.volume.action, v: Number(range.value) });
+        head.append(range);
+      }
+      page.append(head);
       const grid = el("div", "grid");
       if (!s.buttons.length) grid.append(el("p", "empty", "—"));
       for (const btn of s.buttons) {
-        const cell = el("div", "cell");
+        const cell = el("div", "cell" + (favs.has(keyOf(btn)) ? " fav" : ""));
         const t = el("button", "tile " + (btn.img ? "img" : "noimg") + (btn.active ? " on" : ""));
         t.append(el("span", "", btn.label));
         if (btn.img) t.style.backgroundImage = `url("${/^https:/.test(btn.img) ? btn.img : `img?${q}&p=${encodeURIComponent(btn.img)}`}")`;
-        t.onclick = () => act(btn.action);
+        bindPress(t, btn);
         cell.append(t);
         if (btn.alt) {
           const a = el("button", "alt", btn.alt.label);
