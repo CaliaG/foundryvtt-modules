@@ -28,7 +28,7 @@ La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrim
 |---|---|---|
 | Audio | tutte le playlist | play/stop della playlist o del singolo suono |
 | Soundscape | modulo `soundscape`, se attivo | cambia scena, start/stop, pad del soundboard |
-| Personaggi | cartella attori "Deck", sottocartelle comprese | mostra l'immagine a tutti; il tasto **Splash** usa `boss-splash`, se attivo |
+| Personaggi | cartella attori "Deck", sottocartelle comprese | toggle Show/Hide Character di `ginzzzu-portraits` (il tile evidenziato è il personaggio mostrato); senza quel modulo mostra l'immagine a tutti. Il tasto **Splash** usa `boss-splash`, se attivo |
 | Macro | cartella macro "Deck" | esegue la macro |
 
 I nomi delle cartelle si cambiano nelle impostazioni. Con le macro puoi integrare qualsiasi altro modulo (Syrinscape, Moulinette, ecc.).

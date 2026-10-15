@@ -64,6 +64,7 @@ function soundscapeSections() {
 
 function buildState() {
   const splash = game.modules.get("boss-splash")?.active;
+  const portraits = game.modules.get("ginzzzu-portraits")?.active;
   const pages = [{
     id: "audio", title: "Audio",
     sections: game.playlists.contents.map(p => ({
@@ -78,7 +79,10 @@ function buildState() {
   pages.push({
     id: "actors", title: "Personaggi",
     sections: folderSections("Actor", get("actorFolder"), a => ({
-      label: a.name, img: a.img, action: { type: "show", id: a.id },
+      label: a.name, img: a.img,
+      ...(portraits
+        ? { active: !!a.getFlag("ginzzzu-portraits", "portraitShown"), action: { type: "portrait", id: a.id } }
+        : { action: { type: "show", id: a.id } }),
       alt: splash ? { label: "Splash", action: { type: "splash", id: a.id } } : undefined
     }))
   });
@@ -115,6 +119,7 @@ const ACTIONS = {
     popout.render(true);
     return popout.shareImage();
   },
+  portrait: ({ id }) => globalThis.GinzzzuPortraits?.togglePortrait(need(game.actors.get(id), "Attore")),
   splash: ({ id }) => game.bossSplash?.splashBoss({ actor: need(game.actors.get(id), "Attore").id }),
   macro: ({ id }) => need(game.macros.get(id), "Macro").execute()
 };
