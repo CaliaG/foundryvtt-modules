@@ -40,3 +40,28 @@ Solo il client del **GM attivo** si collega al relay ed esegue le azioni.
 ```bash
 node --test remote-deck/server/server.test.mjs
 ```
+
+## Deploy sul server Foundry (Caddy + pm2)
+
+Configurazione usata su `richiamodicthulhu.sytes.net`: il relay gira accanto a Foundry, dietro lo stesso HTTPS, all'indirizzo `/deck/`.
+
+- **Caddyfile**:
+  ```
+  richiamodicthulhu.sytes.net {
+      redir /deck /deck/
+      handle_path /deck/* {
+          reverse_proxy localhost:3333
+      }
+      handle {
+          reverse_proxy localhost:30000
+          encode zstd gzip
+      }
+  }
+  ```
+- **pm2**, che esegue il relay direttamente dalla cartella del modulo installato:
+  ```bash
+  HOST=127.0.0.1 PUBLIC_URL=https://richiamodicthulhu.sytes.net/deck pm2 start ~/foundryuserdata/Data/modules/remote-deck/server/server.mjs --name remote-deck && pm2 save
+  ```
+  Il token si trova in `~/.remote-deck-token`, cioè fuori da `Data`, che è servita pubblicamente. Dopo aver aggiornato il modulo lancia `pm2 restart remote-deck`.
+- **Impostazioni modulo**: URL del relay `https://richiamodicthulhu.sytes.net/deck`.
+- **Telefono**: `https://richiamodicthulhu.sytes.net/deck/?t=<token>`. Funziona da qualsiasi rete.

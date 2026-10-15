@@ -101,7 +101,8 @@ export function createServer(token) {
   return server;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// pm2 avvia lo script tramite un wrapper: il percorso reale è in pm_exec_path.
+if ([process.argv[1], process.env.pm_exec_path].includes(fileURLToPath(import.meta.url))) {
   const port = Number(process.env.PORT ?? 3333);
   const host = process.env.HOST; // es. 127.0.0.1 dietro reverse proxy
   const publicUrl = process.env.PUBLIC_URL;
