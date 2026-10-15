@@ -1,0 +1,25 @@
+# Tag "<modulo>-v<versione>" (es. remote-deck-v0.1.0) -> release con module.json e <modulo>.zip
+name: Release module
+on:
+  push:
+    tags: ["*-v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build zip
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          ID="${TAG%-v*}"; VERSION="${TAG##*-v}"
+          test -f "$ID/module.json" || { echo "modulo $ID non trovato"; exit 1; }
+          test "$(jq -r .version "$ID/module.json")" = "$VERSION" || { echo "version in $ID/module.json != $VERSION"; exit 1; }
+          mkdir dist && cp "$ID/module.json" dist/
+          (cd "$ID" && zip -r "../dist/$ID.zip" . -x '.*')
+          echo "ID=$ID" >> "$GITHUB_ENV"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/module.json "dist/$ID.zip" --title "$GITHUB_REF_NAME" --generate-notes

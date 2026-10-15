@@ -1,0 +1,33 @@
+{
+  "id": "remote-deck",
+  "title": "Remote Deck",
+  "description": "Usa smartphone o iPad come una Stream Deck: playlist, suoni, Soundscape, personaggi (immagine / Boss Splash) e macro.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [
+    {
+      "name": "Giuseppe Calia"
+    }
+  ],
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "relationships": {
+    "recommends": [
+      {
+        "id": "soundscape",
+        "type": "module"
+      },
+      {
+        "id": "boss-splash",
+        "type": "module"
+      }
+    ]
+  },
+  "url": "https://github.com/CaliaG/foundryvtt-modules",
+  "manifest": "https://raw.githubusercontent.com/CaliaG/foundryvtt-modules/main/remote-deck/module.json",
+  "download": "https://github.com/CaliaG/foundryvtt-modules/releases/download/remote-deck-v0.1.0/remote-deck.zip"
+}

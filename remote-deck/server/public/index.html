@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14110f">
+<title>Remote Deck</title>
+<style>
+  :root { --bg:#14110f; --panel:#221d19; --btn:#2e2722; --text:#efe6d8; --muted:#9a8f80; --accent:#e0a040; --on:#3f7d4a; --bad:#b0413e; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.3 system-ui,-apple-system,sans-serif;
+         padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(80px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+         user-select:none; -webkit-user-select:none; }
+  header { position:sticky; top:0; z-index:2; background:var(--bg); display:flex; gap:6px; padding:10px 16px; overflow-x:auto; align-items:center; }
+  header button { flex:none; border:0; border-radius:999px; padding:10px 16px; background:var(--panel); color:var(--text); font:inherit; font-weight:600; }
+  header button.sel { background:var(--accent); color:#1a1208; }
+  header { border-bottom:3px solid var(--bad); }
+  header.ok { border-bottom-color:var(--on); }
+  main { padding:0 16px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 8px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
+  .cell { position:relative; }
+  .tile { width:100%; aspect-ratio:1; border:0; border-radius:14px; background:var(--btn) center/cover no-repeat; color:var(--text);
+          font:inherit; font-weight:600; padding:8px; display:flex; align-items:flex-end; justify-content:center; text-align:center;
+          overflow:hidden; word-break:break-word; transition:transform .08s; }
+  .tile.noimg { align-items:center; }
+  .tile.img span { background:rgba(0,0,0,.65); border-radius:6px; padding:2px 6px; }
+  .tile:active { transform:scale(.95); }
+  .tile.on { box-shadow:inset 0 0 0 3px var(--accent); background-color:var(--on); }
+  .alt { position:absolute; top:6px; right:6px; border:0; border-radius:8px; padding:6px 8px; background:var(--bad); color:#fff; font:inherit; font-size:12px; }
+  .empty { color:var(--muted); padding:24px 0; }
+  #stop { position:fixed; left:16px; right:16px; bottom:calc(12px + env(safe-area-inset-bottom)); height:56px; border:0; border-radius:14px;
+          background:var(--bad); color:#fff; font:inherit; font-size:18px; font-weight:700; }
+  #toast { position:fixed; left:50%; bottom:calc(80px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:#000c; padding:8px 14px;
+           border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header id="tabs"></header>
+<main id="page"><p class="empty">In attesa di Foundry…</p></main>
+<button id="stop">■ Stop audio</button>
+<div id="toast"></div>
+<script>
+  const params = new URLSearchParams(location.search);
+  let token = params.get("t");
+  try { token ? localStorage.setItem("deckToken", token) : (token = localStorage.getItem("deckToken")); } catch {}
+  let tab = null; try { tab = localStorage.getItem("deckTab"); } catch {}
+  let state = null, foundry = false, sse = false;
+  const q = "t=" + encodeURIComponent(token ?? "");
+  const $ = id => document.getElementById(id);
+
+  function toast(msg) { $("toast").textContent = msg; $("toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("show"), 1800); }
+
+  async function act(action) {
+    navigator.vibrate?.(15);
+    try {
+      const r = await fetch("action?" + q, { method: "POST", body: JSON.stringify(action) });
+      if (!r.ok) toast(await r.text() || "Errore " + r.status);
+    } catch { toast("Relay non raggiungibile"); }
+  }
+
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+
+  function render() {
+    $("tabs").classList.toggle("ok", sse && foundry);
+    const tabs = $("tabs"), page = $("page");
+    tabs.replaceChildren();
+    page.replaceChildren();
+    if (!token) return page.append(el("p", "empty", "Token mancante: apri l'URL stampato dal relay."));
+    if (!state) return page.append(el("p", "empty", foundry ? "Caricamento…" : "In attesa di Foundry…"));
+    if (!state.pages.some(p => p.id === tab)) tab = state.pages[0]?.id;
+    for (const p of state.pages) {
+      const b = el("button", p.id === tab ? "sel" : "", p.title);
+      b.onclick = () => { tab = p.id; try { localStorage.setItem("deckTab", tab); } catch {} render(); };
+      tabs.append(b);
+    }
+    const current = state.pages.find(p => p.id === tab);
+    if (!current?.sections.length) return page.append(el("p", "empty", "Niente da mostrare qui."));
+    for (const s of current.sections) {
+      page.append(el("h2", "", s.title));
+      const grid = el("div", "grid");
+      if (!s.buttons.length) grid.append(el("p", "empty", "—"));
+      for (const btn of s.buttons) {
+        const cell = el("div", "cell");
+        const t = el("button", "tile " + (btn.img ? "img" : "noimg") + (btn.active ? " on" : ""));
+        t.append(el("span", "", btn.label));
+        if (btn.img) t.style.backgroundImage = `url("img?${q}&p=${encodeURIComponent(btn.img)}")`;
+        t.onclick = () => act(btn.action);
+        cell.append(t);
+        if (btn.alt) {
+          const a = el("button", "alt", btn.alt.label);
+          a.onclick = () => act(btn.alt.action);
+          cell.append(a);
+        }
+        grid.append(cell);
+      }
+      page.append(grid);
+    }
+  }
+
+  $("stop").onclick = () => act({ type: "stopAllAudio" });
+
+  if (token) {
+    const es = new EventSource("events?role=deck&" + q);
+    es.onopen = () => { sse = true; render(); };
+    es.onerror = () => { sse = false; render(); };
+    es.onmessage = e => {
+      const msg = JSON.parse(e.data);
+      foundry = msg.foundry;
+      if (msg.kind === "state" && msg.state) state = msg.state;
+      render();
+    };
+  }
+  render();
+</script>
+</body>
+</html>
