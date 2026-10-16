@@ -107,3 +107,42 @@ Note:
 - **Volti da usare**: solo volti di personaggi inventati o generati, o di persone che hanno dato il consenso.
 - **Licenze**: Deep-Live-Cam (AGPL-3.0) e i suoi modelli (uso non commerciale) non sono inclusi in questo repo.
 - **Aggiornamenti di Deep-Live-Cam**: lo script usa nomi interni di DLC (`modules.globals.source_path`, `face_swapper.swap_face`). Se un aggiornamento li cambia, lo script si ferma all'avvio con un messaggio chiaro. Verificato con DLC `a924275`.
+
+## Ritratto animato (LivePortrait): in alternativa a Deep-Live-Cam
+
+Deep-Live-Cam sostituisce **solo il viso**: i capelli, il collo e lo sfondo restano i tuoi. Con [`face/remote_deck_portrait.py`](face/remote_deck_portrait.py) è invece **l'intero ritratto** del personaggio (capelli, vestiti, sfondo) ad animarsi seguendo le tue espressioni. Usa [FasterLivePortrait](https://github.com/warmshao/FasterLivePortrait).
+
+Stesso tab **Volti**, stessa deck, stesse regole:
+- tap su un personaggio = ritratto animato;
+- "Faccia reale" = webcam normale;
+- se la webcam perde il tuo volto, resta l'ultimo frame del ritratto, non compare la tua faccia.
+
+Si usa **un agente alla volta**: chiudi quello di Deep-Live-Cam e avvia questo, oppure il contrario. Lato Foundry non cambia niente.
+
+| | Deep-Live-Cam | LivePortrait |
+|---|---|---|
+| Cosa cambia | solo il viso | tutto il ritratto (capelli inclusi) |
+| Ritratti illustrati | spesso non riconosciuti | funzionano |
+| Mac M1 Pro | fluido (CoreML) | **~2 fps: non usabile dal vivo** |
+| Windows + NVIDIA RTX | sì (CUDA) | ~30 fps con TensorRT (dati del progetto, da verificare) |
+
+**Mac**: provato con [fasterliveportrait-mlx](https://github.com/ivanfioravanti/fasterliveportrait-mlx). Funziona tutto (cambio ritratto mentre gira, faccia reale), ma a ~2 fps con la webcam: circa 430 ms per frame sul M1 Pro, anche con il profilo `ultra`. Serve un Mac molto più potente.
+```bash
+cd ~/dev/personal/fasterliveportrait-mlx && uv sync
+DECK_URL=https://richiamodicthulhu.sytes.net/deck DECK_TOKEN=<token> uv run python <repo>/remote-deck/face/remote_deck_portrait.py --flp . --mlx-profile ultra
+```
+
+**Windows (NVIDIA RTX)**, non ancora provato:
+1. Scarica il pacchetto Windows di [FasterLivePortrait](https://github.com/warmshao/FasterLivePortrait) (versione "one-click") e segui il suo README.
+2. Converti i modelli in TensorRT con `scripts\all_onnx2trt.bat`.
+3. Prova prima che giri da solo, con `camera.bat <immagine>`.
+4. Poi avvia l'agente con il Python del pacchetto, in PowerShell:
+   ```powershell
+   $env:DECK_URL="https://richiamodicthulhu.sytes.net/deck"; $env:DECK_TOKEN="<token>"
+   <python del pacchetto> <repo>\remote-deck\face\remote_deck_portrait.py --flp <cartella FasterLivePortrait> --cfg configs\trt_infer.yaml
+   ```
+5. In OBS: *Cattura finestra* "Remote Deck" → videocamera virtuale → vdo.ninja, come per Deep-Live-Cam.
+
+Note:
+- Il codice di LivePortrait e FasterLivePortrait è MIT, ma i modelli insightface sono solo per uso non commerciale. Se vuoi evitarli, usa la config MediaPipe (`configs/trt_mp_infer.yaml`).
+- L'agente legge la webcam a 640×480 (`--camera N` per sceglierne un'altra). Ogni 10 secondi stampa gli fps reali.
