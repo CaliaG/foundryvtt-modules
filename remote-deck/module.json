@@ -2,7 +2,7 @@
   "id": "remote-deck",
   "title": "Remote Deck",
   "description": "Usa smartphone o iPad come una Stream Deck: playlist, soundboard Moulinette, personaggi (Ginzzzu Portraits / Boss Splash) e macro, volti in webcam (Deep-Live-Cam o LivePortrait).",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -37,5 +37,5 @@
   },
   "url": "https://github.com/CaliaG/foundryvtt-modules",
   "manifest": "https://raw.githubusercontent.com/CaliaG/foundryvtt-modules/main/remote-deck/module.json",
-  "download": "https://github.com/CaliaG/foundryvtt-modules/releases/download/remote-deck-v0.10.0/remote-deck.zip"
+  "download": "https://github.com/CaliaG/foundryvtt-modules/releases/download/remote-deck-v0.10.1/remote-deck.zip"
 }

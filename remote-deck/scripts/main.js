@@ -39,6 +39,11 @@ Hooks.once("init", () => {
   reg("actorFolder", "Cartella personaggi", "Nome della cartella di attori mostrata nella deck.", "Deck");
   reg("macroFolder", "Cartella macro", "Nome della cartella di macro mostrata nella deck.", "Deck");
   reg("handoutFolder", "Cartella dispense", "Cartella di journal: ogni pagina diventa una dispensa da mostrare e consegnare ai giocatori.", "Dispense");
+  game.settings.register(ID, "handoutImageOnly", {
+    name: "Dispense immagine senza titolo",
+    hint: "Le pagine immagine si mostrano come sola immagine, senza titolo né scheda del journal (le pagine di testo/PDF si aprono sempre come journal).",
+    scope: "world", config: true, type: Boolean, default: true
+  });
   reg("faceFolder", "Cartella volti", "Cartella di attori da \"interpretare\" in webcam con Deep-Live-Cam (vedi README).", "Volti");
   // Volto attivo in webcam: client, così sopravvive a un reload del GM.
   game.settings.register(ID, "currentFace", { scope: "client", config: false, type: String, default: "" });
@@ -304,14 +309,18 @@ const ACTIONS = {
     const next = id && id !== get("currentFace") ? need(game.actors.get(id), "Attore").id : "";
     return game.settings.set(ID, "currentFace", next);
   },
-  // Consegna: journal almeno Limitato (compare ai giocatori con le sole pagine condivise), pagina Osservatore; poi la mostra a tutti.
+  // Consegna: journal almeno Limitato (compare ai giocatori con le sole pagine condivise), pagina Osservatore; poi la mostra a tutti
+  // (le pagine immagine, di default, come sola immagine senza titolo).
   handout: async ({ id, page }) => {
     const { LIMITED, OBSERVER } = CONST.DOCUMENT_OWNERSHIP_LEVELS;
     const journal = need(game.journal.get(id), "Journal");
     const p = need(journal.pages.get(page), "Pagina");
     if ((journal.ownership.default ?? 0) < LIMITED) await journal.update({ "ownership.default": LIMITED });
     if (!handoutGiven(journal, p)) await p.update({ "ownership.default": OBSERVER });
-    return foundry.documents.collections.Journal.show(p, { force: true });
+    const { Journal } = foundry.documents.collections;
+    if (p.type === "image" && p.src && game.settings.get(ID, "handoutImageOnly"))
+      return Journal.showImage(p.src, { title: p.name, showTitle: false, uuid: p.uuid });
+    return Journal.show(p, { force: true });
   },
   sheet: ({ id }) => need(game.actors.get(id), "Attore").sheet.render(true),
   macro: ({ id }) => need(game.macros.get(id), "Macro").execute()
