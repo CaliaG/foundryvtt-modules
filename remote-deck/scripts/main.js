@@ -38,6 +38,7 @@ Hooks.once("init", () => {
   reg("token", "Token", "Il token stampato dal relay all'avvio.", "");
   reg("actorFolder", "Cartella personaggi", "Nome della cartella di attori mostrata nella deck.", "Deck");
   reg("macroFolder", "Cartella macro", "Nome della cartella di macro mostrata nella deck.", "Deck");
+  reg("handoutFolder", "Cartella dispense", "Cartella di journal: ogni pagina diventa una dispensa da mostrare e consegnare ai giocatori.", "Dispense");
   reg("faceFolder", "Cartella volti", "Cartella di attori da \"interpretare\" in webcam con Deep-Live-Cam (vedi README).", "Volti");
   // Volto attivo in webcam: client, così sopravvive a un reload del GM.
   game.settings.register(ID, "currentFace", { scope: "client", config: false, type: String, default: "" });
@@ -67,7 +68,7 @@ Hooks.once("ready", () => {
     push();
   };
 
-  for (const doc of ["Playlist", "PlaylistSound", "Actor", "Macro", "Folder", "Scene"])
+  for (const doc of ["Playlist", "PlaylistSound", "Actor", "Macro", "Folder", "Scene", "JournalEntry", "JournalEntryPage"])
     for (const op of ["create", "update", "delete"]) Hooks.on(`${op}${doc}`, push);
   Hooks.on("pauseGame", push);
   Hooks.on("canvasReady", push);
@@ -96,6 +97,28 @@ const treeSections = (folder, toButton) => walk(folder)
 function folderSections(type, name, toButton) {
   const root = findFolder(type, name);
   return root ? treeSections(root, toButton) : missing(type, name);
+}
+
+// Dispense: una sezione per journal della cartella (e sottocartelle), un pulsante per pagina.
+// "Consegnata" = i giocatori la vedono già per default (permesso effettivo ≥ Osservatore).
+function handoutGiven(journal, page) {
+  const { INHERIT, OBSERVER } = CONST.DOCUMENT_OWNERSHIP_LEVELS;
+  const level = page.ownership.default ?? INHERIT;
+  return (level === INHERIT ? journal.ownership.default : level) >= OBSERVER;
+}
+
+function handoutSections() {
+  const name = get("handoutFolder"), root = findFolder("JournalEntry", name);
+  if (!root) return missing("JournalEntry", name);
+  return walk(root).flatMap(f => sortIn(f, f.contents)).map(j => ({
+    title: j.name,
+    buttons: j.pages.contents.sort((a, b) => a.sort - b.sort).map(p => ({
+      label: p.name,
+      img: p.type === "image" ? p.src : undefined,
+      active: handoutGiven(j, p),
+      action: { type: "handout", id: j.id, page: p.id }
+    }))
+  })).filter(s => s.buttons.length);
 }
 
 // Soundboard & Soundpad (by Moulinette): nessuna API pubblica, leggiamo le sue board (setting client del GM)
@@ -223,6 +246,7 @@ function buildState() {
       alt: splash ? { label: "Splash", action: { type: "splash", id: a.id } } : undefined
     }))
   });
+  pages.push({ id: "handouts", title: "Dispense", sections: handoutSections() });
   pages.push({
     id: "macros", title: "Macro",
     sections: folderSections("Macro", get("macroFolder"), m => ({ label: m.name, img: m.img, action: { type: "macro", id: m.id } }))
@@ -279,6 +303,15 @@ const ACTIONS = {
   face: ({ id }) => {
     const next = id && id !== get("currentFace") ? need(game.actors.get(id), "Attore").id : "";
     return game.settings.set(ID, "currentFace", next);
+  },
+  // Consegna: journal almeno Limitato (compare ai giocatori con le sole pagine condivise), pagina Osservatore; poi la mostra a tutti.
+  handout: async ({ id, page }) => {
+    const { LIMITED, OBSERVER } = CONST.DOCUMENT_OWNERSHIP_LEVELS;
+    const journal = need(game.journal.get(id), "Journal");
+    const p = need(journal.pages.get(page), "Pagina");
+    if ((journal.ownership.default ?? 0) < LIMITED) await journal.update({ "ownership.default": LIMITED });
+    if (!handoutGiven(journal, p)) await p.update({ "ownership.default": OBSERVER });
+    return foundry.documents.collections.Journal.show(p, { force: true });
   },
   sheet: ({ id }) => need(game.actors.get(id), "Attore").sheet.render(true),
   macro: ({ id }) => need(game.macros.get(id), "Macro").execute()

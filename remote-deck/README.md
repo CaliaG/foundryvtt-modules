@@ -34,6 +34,7 @@ La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrim
 | Soundboard | board di *Soundboard & Soundpad (by Moulinette)*, se attivo: una sezione per board | play/stop dello slot, come il tasto in Moulinette. Le board sono salvate nel browser del GM: vanno create in quel browser |
 | Atmosfera | effetti di `fxmaster`, se attivo | accende/spegne particelle e filtri, con i parametri di default, sulla scena che il GM sta guardando |
 | Personaggi | cartella attori "Deck", sottocartelle comprese | toggle Show/Hide Character di `ginzzzu-portraits` (il tile evidenziato è il personaggio mostrato); senza quel modulo mostra l'immagine a tutti. Il tasto **Splash** usa `boss-splash`, se attivo |
+| Dispense | cartella journal "Dispense", sottocartelle comprese: una sezione per journal, un pulsante per pagina (le pagine immagine hanno l'anteprima) | **mostra la pagina a tutti e la consegna**: i giocatori ricevono il permesso Osservatore e la ritrovano nei loro journal (il journal diventa Limitato, quindi vedono solo le pagine consegnate). Le dispense consegnate sono evidenziate. Per nasconderla di nuovo, rimetti il permesso a Nessuno in Foundry |
 | Macro | cartella macro "Deck", sottocartelle comprese | esegue la macro |
 | Volti | cartella attori "Volti", se esiste | cambia la **tua faccia in webcam** con quella del personaggio (Deep-Live-Cam, vedi sotto); **Faccia reale** o un secondo tap tornano normali |
 
