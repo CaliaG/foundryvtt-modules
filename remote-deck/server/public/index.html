@@ -37,6 +37,20 @@
   .tile:active { transform:scale(.95); }
   .tile.on { box-shadow:inset 0 0 0 3px var(--accent); background-color:var(--on); }
   .cell.fav::before { content:"★"; position:absolute; top:6px; left:8px; z-index:1; color:var(--accent); text-shadow:0 0 3px #000; pointer-events:none; }
+  .grid.cards { grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); }
+  .card { width:100%; border:0; border-radius:14px; background:var(--btn); color:var(--text); font:inherit; padding:12px; text-align:left; display:flex; flex-direction:column; gap:8px; }
+  .card.on { box-shadow:inset 0 0 0 3px var(--bad); }
+  .card .top { display:flex; align-items:center; gap:10px; }
+  .card .avatar { flex:none; width:48px; height:48px; border-radius:50%; background:var(--panel) center/cover no-repeat; }
+  .card .name { font-weight:700; font-size:16px; }
+  .card .badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .card .badge { background:var(--bad); color:#fff; border-radius:6px; padding:2px 6px; font-size:11px; font-weight:600; }
+  .stat { display:grid; grid-template-columns:64px 1fr 56px; align-items:center; gap:8px; font-size:13px; }
+  .stat .bar { height:8px; border-radius:4px; background:var(--panel); overflow:hidden; }
+  .stat .fill { height:100%; background:var(--on); }
+  .stat .fill.mid { background:var(--accent); }
+  .stat .fill.low { background:var(--bad); }
+  .stat .num { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
   .alt { position:absolute; top:6px; right:6px; border:0; border-radius:8px; padding:6px 8px; background:var(--bad); color:#fff; font:inherit; font-size:12px; }
   .empty { color:var(--muted); padding:24px 0; }
   #bar { position:fixed; left:16px; right:16px; bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:10px; }
@@ -101,6 +115,34 @@
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
 
   // Preferiti raggruppati per categoria d'origine ("Audio · Taverna", "Personaggi · Deck", ...).
+  const imgUrl = img => /^https:/.test(img) ? img : `img?${q}&p=${encodeURIComponent(img)}`;
+
+  // Scheda con barre (es. investigatori CoC): stesso tap/pressione lunga dei tile.
+  function card(btn) {
+    const c = el("button", "card" + (btn.active ? " on" : ""));
+    const top = el("div", "top"), avatar = el("div", "avatar"), info = el("div");
+    if (btn.img) avatar.style.backgroundImage = `url("${imgUrl(btn.img)}")`;
+    info.append(el("div", "name", btn.label));
+    if (btn.badges?.length) {
+      const badges = el("div", "badges");
+      for (const b of btn.badges) badges.append(el("span", "badge", b));
+      info.append(badges);
+    }
+    top.append(avatar, info);
+    c.append(top);
+    for (const st of btn.stats) {
+      const row = el("div", "stat"), bar = el("div", "bar");
+      const ratio = st.max > 0 ? Math.max(0, Math.min(1, st.value / st.max)) : 0;
+      const fill = el("div", "fill" + (st.total ? "" : ratio < 0.2 ? " low" : ratio < 0.5 ? " mid" : ""));
+      fill.style.width = `${ratio * 100}%`;
+      bar.append(fill);
+      row.append(el("span", "", st.label), bar, el("span", "num", st.total ? `${st.value}` : `${st.value}/${st.max}`));
+      c.append(row);
+    }
+    bindPress(c, btn);
+    return c;
+  }
+
   function favPage() {
     const seen = new Set(), sections = [];
     for (const p of state.pages) for (const s of p.sections) {
@@ -141,13 +183,14 @@
         head.append(range);
       }
       page.append(head);
-      const grid = el("div", "grid");
+      const grid = el("div", s.buttons.some(b => b.stats) ? "grid cards" : "grid");
       if (!s.buttons.length) grid.append(el("p", "empty", "—"));
       for (const btn of s.buttons) {
         const cell = el("div", "cell" + (favs.has(keyOf(btn)) ? " fav" : ""));
+        if (btn.stats) { cell.append(card(btn)); grid.append(cell); continue; }
         const t = el("button", "tile " + (btn.img ? "img" : "noimg") + (btn.active ? " on" : ""));
         t.append(el("span", "", btn.label));
-        if (btn.img) t.style.backgroundImage = `url("${/^https:/.test(btn.img) ? btn.img : `img?${q}&p=${encodeURIComponent(btn.img)}`}")`;
+        if (btn.img) t.style.backgroundImage = `url("${imgUrl(btn.img)}")`;
         bindPress(t, btn);
         cell.append(t);
         if (btn.alt) {

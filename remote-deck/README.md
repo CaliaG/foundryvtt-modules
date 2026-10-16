@@ -27,6 +27,7 @@ La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrim
 
 | Tab | Da dove arriva | Tap |
 |---|---|---|
+| Investigatori | solo mondi **Call of Cthulhu 7e**: i personaggi assegnati a un giocatore | SAN, PF, PM e Fortuna con barre (ambra sotto il 50%, rosse sotto il 20%) e condizioni (follia, svenuto, morente, ferita grave…); bordo rosso se c'è una condizione grave. Il tap apre la scheda sullo schermo del GM. Si aggiorna da solo |
 | Scene | scene presenti nella barra di navigazione | attiva la scena per tutti; quella attiva è evidenziata |
 | ★ | i tuoi preferiti | **tieni premuto** un pulsante in qualsiasi tab per aggiungerlo o toglierlo; sono salvati sul telefono |
 | Audio | tutte le playlist | play/stop della playlist o del singolo suono; lo slider accanto al titolo regola il volume della playlist per tutti |

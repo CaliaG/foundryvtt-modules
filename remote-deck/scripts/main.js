@@ -154,10 +154,42 @@ function fxSections() {
   ];
 }
 
+// Call of Cthulhu 7e: stato degli investigatori (attori "character" di un giocatore). Percorsi del sistema CoC7 8.x.
+const COC_STATS = [
+  ["CoC7.SAN", "system.attribs.san.value", "system.attribs.san.max"],
+  ["CoC7.HP", "system.attribs.hp.value", "system.attribs.hp.max"],
+  ["CoC7.MP", "system.attribs.mp.value", "system.attribs.mp.max"],
+  ["CoC7.Luck", "system.attribs.lck.value", null]
+];
+const COC_CONDITIONS = [  // [condizione, etichetta, grave?]
+  ["dead", "CoC7.Dead", true], ["dying", "CoC7.Dying", true], ["unconscious", "CoC7.Unconscious", true],
+  ["indefInsane", "CoC7.IndefiniteInsanity", true], ["tempoInsane", "CoC7.TemporaryInsanity", true],
+  ["criticalWounds", "CoC7.CriticalWounds", false], ["prone", "CoC7.Prone", false]
+];
+
+function investigatorSections() {
+  const num = (a, path, fallback) => Number(foundry.utils.getProperty(a, path) ?? fallback) || 0;
+  const buttons = game.actors.filter(a => a.type === "character" && a.hasPlayerOwner)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(a => {
+      const on = COC_CONDITIONS.filter(([key]) => foundry.utils.getProperty(a, `system.conditions.${key}.value`));
+      return {
+        label: a.name, img: a.img, action: { type: "sheet", id: a.id },
+        stats: COC_STATS.map(([label, value, max]) => ({
+          label: game.i18n.localize(label), value: num(a, value, 0), max: max ? num(a, max, 99) : 99, total: !max
+        })),
+        badges: on.map(([, label]) => game.i18n.localize(label)),
+        active: on.some(([, , grave]) => grave)
+      };
+    });
+  return [{ title: buttons.length ? "Investigatori" : "Nessun investigatore assegnato a un giocatore", buttons }];
+}
+
 function buildState() {
   const splash = game.modules.get("boss-splash")?.active;
   const portraits = game.modules.get("ginzzzu-portraits")?.active;
-  const pages = [{
+  const pages = game.system.id === "CoC7" ? [{ id: "investigators", title: "Investigatori", sections: investigatorSections() }] : [];
+  pages.push({
     id: "scenes", title: "Scene",
     sections: [{
       title: "Navigazione",
@@ -178,7 +210,7 @@ function buildState() {
         ...p.sounds.contents.map(s => ({ label: s.name, active: s.playing, action: { type: "sound", id: p.id, sid: s.id } }))
       ]
     }))
-  }];
+  });
   if (game.modules.get(MSB)?.active) pages.push({ id: "soundboard", title: "Soundboard", sections: soundboardSections() });
   if (game.modules.get("fxmaster")?.active && canvas.scene) pages.push({ id: "fx", title: "Atmosfera", sections: fxSections() });
   pages.push({
@@ -248,6 +280,7 @@ const ACTIONS = {
     const next = id && id !== get("currentFace") ? need(game.actors.get(id), "Attore").id : "";
     return game.settings.set(ID, "currentFace", next);
   },
+  sheet: ({ id }) => need(game.actors.get(id), "Attore").sheet.render(true),
   macro: ({ id }) => need(game.macros.get(id), "Macro").execute()
 };
 
