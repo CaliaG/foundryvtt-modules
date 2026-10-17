@@ -20,10 +20,21 @@ const el = (tag, props = {}, ...children) => {
   return node;
 };
 
-// Testo semplice -> HTML sicuro per la chat, senza i rimandi [1], [2-3] alle fonti.
-function chatHTML(text) {
-  const p = el("p", { textContent: text.replace(/\s*\[\d+(?:\s*[,-]\s*\d+)*\]/g, "") });
-  return p.outerHTML.replace(/\n/g, "<br>");
+const escapeHTML = s => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+
+// Il markdown che usa NotebookLM -> HTML. Prima l'escape, poi solo tag nostri: niente HTML né link dalla risposta.
+// ponytail: solo titoli, elenchi, **grassetto** e *corsivo*; tabelle e link restano testo.
+export function md(text) {
+  return escapeHTML(text)
+    .replace(/^#{1,6}\s+(.+)$/gm, "<strong>$1</strong>")
+    .replace(/^(\s*)[*-]\s+/gm, "$1• ")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+}
+
+// Risposta -> messaggio di chat, senza i rimandi [1], [2-3] alle fonti.
+export function chatHTML(text) {
+  return `<p>${md(text.replace(/\s*\[\d+(?:\s*[,-]\s*\d+)*\]/g, "")).replace(/\n/g, "<br>")}</p>`;
 }
 
 class NotebookChat extends foundry.applications.api.ApplicationV2 {
@@ -128,7 +139,7 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
   turnHTML({ q, a, refs = [] }) {
     const answer = a == null
       ? el("div", { className: "nlm-a nlm-wait", textContent: "Sto pensando…" })
-      : el("div", { className: "nlm-a", textContent: a });
+      : el("div", { className: "nlm-a", innerHTML: md(a) });
     const turn = el("div", { className: "nlm-turn" }, el("div", { className: "nlm-q", textContent: q }), answer);
     if (refs.length) turn.append(el("details", {},
       el("summary", { textContent: `Fonti (${refs.length})` }),
