@@ -15,6 +15,7 @@ Foundry (browser del GM) ──► https://<foundry>/notebooklm/ ──Caddy─�
 - **Tasto destro → Chiedi a NotebookLM** su un attore, una scena (anche nella barra delle scene in alto), un journal o un oggetto. La domanda parte già scritta: ad esempio "Chi è Jackson Elias? Descrivi il suo ruolo nell'avventura…".
 - La risposta è numerata come in NotebookLM. **Fonti** mostra i passaggi citati e il documento da cui vengono.
 - **Invia in chat** pubblica la risposta, senza citazioni, nella chat di Foundry. Utile per le informazioni da dare ai giocatori.
+- **Salva nel journal** aggiunge domanda, risposta e fonti come pagina del journal "NotebookLM – *nome del notebook*". Il journal viene creato al primo salvataggio ed è visibile solo al GM. Così la preparazione resta in Foundry.
 - La cronologia è salvata nel browser del GM, un notebook alla volta. 🧹 la cancella.
 - **Stile e lunghezza delle risposte** si scelgono nelle impostazioni del modulo. Di default: in italiano, pratiche, adatte al Custode. Il modulo li applica al notebook su NotebookLM prima della prima domanda. Lasciando lo stile vuoto e la lunghezza "Normali" torna lo stile predefinito di NotebookLM.
 

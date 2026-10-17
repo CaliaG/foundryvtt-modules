@@ -53,6 +53,12 @@ export function chatHTML(text) {
   return `<p>${md(text.replace(/\s*\[\d+(?:\s*[,-]\s*\d+)*\]/g, "")).replace(/\n/g, "<br>")}</p>`;
 }
 
+// Domanda, risposta e fonti citate -> pagina di journal, così la preparazione resta in Foundry.
+export function journalHTML({ q, a, refs = [] }) {
+  const sources = refs.map(r => `<li><strong>[${r.n}] ${escapeHTML(r.source)}</strong>: ${escapeHTML(r.text)}</li>`).join("");
+  return `<p><em>${escapeHTML(q)}</em></p><p>${md(a).replace(/\n/g, "<br>")}</p>${sources && `<h3>Fonti</h3><ul>${sources}</ul>`}`;
+}
+
 class NotebookChat extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {
     id: "notebooklm-chat",
@@ -135,6 +141,20 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
     clearInterval(tick);
     this.pending = null;
     this.render();
+  }
+
+  // Un journal per notebook (riconosciuto dal flag), visibile solo al GM; ogni risposta salvata è una pagina.
+  async saveToJournal(turn) {
+    const nb = get("notebookId");
+    const title = this.notebooks?.find(n => n.id === nb)?.title ?? nb;
+    const entry = game.journal.find(j => j.getFlag(ID, "notebook") === nb) ?? await JournalEntry.create({
+      name: `NotebookLM – ${title}`,
+      ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE },
+      flags: { [ID]: { notebook: nb } }
+    });
+    const name = turn.q.length > 80 ? `${turn.q.slice(0, 80)}…` : turn.q;
+    await entry.createEmbeddedDocuments("JournalEntryPage", [{ name, type: "text", text: { content: journalHTML(turn) } }]);
+    ui.notifications.info(`NotebookLM: risposta salvata in "${entry.name}"`);
   }
 
   async clear() {
@@ -224,7 +244,13 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
     if (a != null) {
       const share = el("button", { type: "button", className: "nlm-share" }, el("i", { className: "fas fa-comment" }), " Invia in chat");
       share.addEventListener("click", () => ChatMessage.create({ content: chatHTML(a), speaker: ChatMessage.getSpeaker() }));
-      turn.append(share);
+      const save = el("button", { type: "button", className: "nlm-share" }, el("i", { className: "fas fa-book-medical" }), " Salva nel journal");
+      save.addEventListener("click", async () => {
+        save.disabled = true;
+        try { await this.saveToJournal({ q, a, refs }); save.lastChild.textContent = " Salvata"; }
+        catch (err) { save.disabled = false; ui.notifications.error(`NotebookLM: ${err.message}`); }
+      });
+      turn.append(el("div", { className: "nlm-actions" }, share, save));
     }
     return turn;
   }

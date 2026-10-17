@@ -6,7 +6,15 @@ import assert from "node:assert/strict";
 globalThis.foundry = { applications: { api: { ApplicationV2: class {} } } };
 const hooks = {};
 globalThis.Hooks = { once() {}, on: (name, fn) => { hooks[name] = fn; } };
-const { md, chatHTML, ASK_ABOUT } = await import("./main.js");
+const { md, chatHTML, journalHTML, ASK_ABOUT } = await import("./main.js");
+
+test("journalHTML", () => {
+  assert.equal(
+    journalHTML({ q: "Chi è <Elias>?", a: "**Elias** muore [1].", refs: [{ n: 1, source: "Book 1.pdf", text: "trovato morto" }] }),
+    "<p><em>Chi è &#60;Elias&#62;?</em></p><p><strong>Elias</strong> muore [1].</p><h3>Fonti</h3><ul><li><strong>[1] Book 1.pdf</strong>: trovato morto</li></ul>"
+  );
+  assert.equal(journalHTML({ q: "q", a: "a" }), "<p><em>q</em></p><p>a</p>");   // senza fonti niente sezione Fonti
+});
 
 test("menu del tasto destro: solo GM, su attori, scene, journal e oggetti", () => {
   for (const type of Object.keys(ASK_ABOUT)) {
