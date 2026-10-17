@@ -12,6 +12,7 @@ Foundry (browser del GM) ──► https://<foundry>/notebooklm/ ──Caddy─�
 
 - Pulsante **NotebookLM** (icona libro) nei controlli dei token, visibile solo al GM.
 - In alto scegli il notebook. Scrivi la domanda e premi **Invio** (Shift+Invio va a capo).
+- **Tasto destro → Chiedi a NotebookLM** su un attore, una scena (anche nella barra delle scene in alto), un journal o un oggetto. La domanda parte già scritta: ad esempio "Chi è Jackson Elias? Descrivi il suo ruolo nell'avventura…".
 - La risposta è numerata come in NotebookLM. **Fonti** mostra i passaggi citati e il documento da cui vengono.
 - **Invia in chat** pubblica la risposta, senza citazioni, nella chat di Foundry. Utile per le informazioni da dare ai giocatori.
 - La cronologia è salvata nel browser del GM, un notebook alla volta. 🧹 la cancella.

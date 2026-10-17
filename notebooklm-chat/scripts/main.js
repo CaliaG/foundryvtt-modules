@@ -220,6 +220,37 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
 
 let chat;
 
+// Tasto destro su attori, scene (anche nella barra in alto), journal e oggetti: domanda pronta, inviata subito.
+export const ASK_ABOUT = {
+  Actor: name => `Chi è ${name}? Descrivi il suo ruolo nell'avventura, cosa vuole, cosa sa e dove compare.`,
+  Scene: name => `Cosa succede in "${name}"? Riassumi luoghi, PNG presenti, indizi da trovare e possibili sviluppi.`,
+  JournalEntry: name => `Cosa dice l'avventura su "${name}"? Riassumi le informazioni utili al Custode.`,
+  Item: name => `Cos'è "${name}" nell'avventura e come si usa? Riporta regole ed effetti rilevanti.`
+};
+
+async function askAbout(question) {
+  chat ??= new NotebookChat();
+  await chat.render({ force: true });   // sceglie il notebook se non c'è ancora
+  if (!get("token") || !get("notebookId")) return;   // la finestra spiega cosa manca
+  if (chat.pending) return ui.notifications.warn("NotebookLM: aspetta la risposta in corso.");
+  chat.ask(question);
+}
+
+for (const [type, question] of Object.entries(ASK_ABOUT)) {
+  Hooks.on(`get${type}ContextOptions`, (app, options) => {
+    if (!game.user.isGM) return;
+    options.push({
+      name: "Chiedi a NotebookLM",
+      icon: '<i class="fas fa-book-open"></i>',
+      callback: li => {
+        const id = li.closest("[data-entry-id]")?.dataset.entryId ?? li.dataset.sceneId;
+        const doc = game.collections.get(type)?.get(id);
+        if (doc) askAbout(question(doc.name));
+      }
+    });
+  });
+}
+
 Hooks.once("init", () => {
   game.settings.register(ID, "serverUrl", {
     name: "URL di notebooklm-server",

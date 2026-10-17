@@ -4,8 +4,18 @@ import assert from "node:assert/strict";
 
 // Quanto basta di Foundry per importare il modulo.
 globalThis.foundry = { applications: { api: { ApplicationV2: class {} } } };
-globalThis.Hooks = { once() {}, on() {} };
-const { md, chatHTML } = await import("./main.js");
+const hooks = {};
+globalThis.Hooks = { once() {}, on: (name, fn) => { hooks[name] = fn; } };
+const { md, chatHTML, ASK_ABOUT } = await import("./main.js");
+
+test("menu del tasto destro: solo GM, su attori, scene, journal e oggetti", () => {
+  for (const type of Object.keys(ASK_ABOUT)) {
+    const menu = isGM => { globalThis.game = { user: { isGM } }; const options = []; hooks[`get${type}ContextOptions`](null, options); return options; };
+    assert.deepEqual(menu(true).map(o => o.name), ["Chiedi a NotebookLM"], type);
+    assert.equal(menu(false).length, 0, type);
+  }
+  assert.match(ASK_ABOUT.Actor("Jackson Elias"), /^Chi è Jackson Elias\?/);
+});
 
 test("md", () => {
   assert.equal(md("**Horror** è per *Call of Cthulhu* [1, 2]"), "<strong>Horror</strong> è per <em>Call of Cthulhu</em> [1, 2]");
