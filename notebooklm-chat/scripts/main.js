@@ -10,7 +10,7 @@ async function api(path, body) {
     body: body && JSON.stringify(body)
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error?.message ?? `HTTP ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(data.error?.message ?? data.detail ?? `HTTP ${res.status}`), { status: res.status });
   return data;
 }
 
@@ -38,6 +38,7 @@ export function md(text, refs = []) {
   return escapeHTML(text)
     .replace(/^#{1,6}\s+(.+)$/gm, "<strong>$1</strong>")
     .replace(/^(\s*)[*-]\s+/gm, "$1• ")
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>")
     .replace(/\[(\d+(?:\s*[,-]\s*\d+)*)\]/g, (marker, nums) => {
@@ -73,6 +74,7 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
   started = 0;        // quando è partita la domanda in attesa
   tips = {};          // notebookId -> [{title, prompt}] oppure "loading"
   styled = {};        // notebookId -> stile già applicato ("obiettivo|lunghezza")
+  sourcesOpen = false; // l'elenco delle fonti resta aperto tra un render e l'altro
   showTips = false;   // suggerimenti mostrati anche con la conversazione già avviata
 
   async loadTips(nb) {
@@ -125,10 +127,15 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
       const history = foundry.utils.deepClone(get("history"));
       const h = history[nb] ??= { conversation: null, turns: [] };
       await this.applyStyle(nb);
-      const [r, sources] = await Promise.all([
-        api(`/notebooks/${nb}/chat`, { question, conversation_id: h.conversation }),
-        this.loadSources(nb).catch(() => ({}))
-      ]);
+      const sources = await this.loadSources(nb).catch(() => ({}));
+      // Con un filtro sulle fonti serve la route di notebooklm_chat_server.py; senza, basta notebooklm-server.
+      const only = (get("sourceFilter")[nb] ?? []).filter(id => id in sources);
+      const r = await api(only.length ? `/notebooks/${nb}/chat/sources` : `/notebooks/${nb}/chat`,
+        { question, conversation_id: h.conversation, ...(only.length && { source_ids: only }) })
+        .catch(err => {
+          if (only.length && err.status === 404) err.message = "il filtro sulle fonti richiede notebooklm_chat_server.py sul server (vedi README)";
+          throw err;
+        });
       h.conversation = r.conversation_id;
       const refs = (r.references ?? []).map(x => ({ n: x.citation_number, text: x.cited_text ?? "", source: sources[x.source_id] ?? "" }));
       h.turns = [...h.turns, { q: question, a: r.answer, refs }].slice(-MAX_TURNS);
@@ -193,6 +200,7 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
     const tipsButton = el("button", { type: "button", title: "Domande suggerite", disabled: !!this.pending }, el("i", { className: "fas fa-lightbulb" }));
     tipsButton.addEventListener("click", () => { this.showTips = !this.showTips; this.render(); });
 
+    const sourcesBox = this.sourcesHTML(nb, await this.loadSources(nb).catch(() => ({})));
     const turns = get("history")[nb]?.turns ?? [];
     const log = el("div", { className: "nlm-log" },
       ...turns.map(t => this.turnHTML(t)),
@@ -216,7 +224,29 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
     });
 
-    return el("div", { className: "nlm" }, el("div", { className: "nlm-head" }, select, tipsButton, clear), log, tips, form);
+    return el("div", { className: "nlm" }, el("div", { className: "nlm-head" }, select, tipsButton, clear), sourcesBox, log, tips, form);
+  }
+
+  // Fonti da usare per le risposte: nessuna spuntata = tutte. Ricordate per notebook.
+  sourcesHTML(nb, sources) {
+    const ids = Object.keys(sources);
+    if (ids.length < 2) return null;
+    const only = new Set((get("sourceFilter")[nb] ?? []).filter(id => id in sources));
+    const box = el("details", { className: "nlm-sources", open: this.sourcesOpen },
+      el("summary", { textContent: only.size ? `Fonti: ${only.size} di ${ids.length}` : "Fonti: tutte" }),
+      ...ids.map(id => {
+        const check = el("input", { type: "checkbox", checked: only.has(id), disabled: !!this.pending });
+        check.addEventListener("change", async () => {
+          check.checked ? only.add(id) : only.delete(id);
+          const filter = foundry.utils.deepClone(get("sourceFilter"));
+          filter[nb] = [...only];
+          await game.settings.set(ID, "sourceFilter", filter);
+          this.render();
+        });
+        return el("label", {}, check, ` ${sources[id] || id}`);
+      }));
+    box.addEventListener("toggle", () => { this.sourcesOpen = box.open; });
+    return box;
   }
 
   // Domande suggerite da NotebookLM: un clic le mette nel campo, da rileggere o tradurre prima di inviarle.
@@ -320,6 +350,8 @@ Hooks.once("init", () => {
   });
   game.settings.register(ID, "notebookId", { scope: "client", config: false, type: String, default: "" });
   // {notebookId: {conversation, turns: [{q, a, refs}]}}: la cronologia resta dopo un reload.
+  // {notebookId: [sourceId, ...]}: fonti a cui limitare le risposte; vuoto = tutte.
+  game.settings.register(ID, "sourceFilter", { scope: "client", config: false, type: Object, default: {} });
   game.settings.register(ID, "history", { scope: "client", config: false, type: Object, default: {} });
 });
 

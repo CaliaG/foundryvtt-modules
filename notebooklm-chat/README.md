@@ -12,6 +12,7 @@ Foundry (browser del GM) ──► https://<foundry>/notebooklm/ ──Caddy─�
 
 - Pulsante **NotebookLM** (icona libro) nei controlli dei token, visibile solo al GM.
 - In alto scegli il notebook. Scrivi la domanda e premi **Invio** (Shift+Invio va a capo).
+- **Fonti**: con due fonti o più, spunta i libri da usare (ad esempio solo *Book 2 – Through the Alps*). Se non ne spunti nessuno, la ricerca usa tutte le fonti. La scelta viene ricordata per ogni notebook.
 - **Tasto destro → Chiedi a NotebookLM** su un attore, una scena (anche nella barra delle scene in alto), un journal o un oggetto. La domanda parte già scritta: ad esempio "Chi è Jackson Elias? Descrivi il suo ruolo nell'avventura…".
 - La risposta è numerata come in NotebookLM. **Fonti** mostra i passaggi citati e il documento da cui vengono.
 - **Invia in chat** pubblica la risposta, senza citazioni, nella chat di Foundry. Utile per le informazioni da dare ai giocatori.
@@ -47,18 +48,21 @@ Serve Python 3.10 o superiore.
    ```bash
    (umask 077; openssl rand -hex 16 > ~/.notebooklm-server-token)
    ```
-4. **pm2**. Con `NOTEBOOKLM_HL=it` le domande suggerite arrivano in italiano; senza, in inglese.
+4. **pm2**. [`server/notebooklm_chat_server.py`](server/notebooklm_chat_server.py) è notebooklm-server con una route in più, la chat limitata ad alcune fonti, che il server ufficiale non ha. Si avvia direttamente dalla cartella del modulo installato. Con `NOTEBOOKLM_HL=it` le domande suggerite arrivano in italiano; senza, in inglese.
    ```bash
-   NOTEBOOKLM_HL=it NOTEBOOKLM_SERVER_TOKEN_FILE=$HOME/.notebooklm-server-token pm2 start ~/.venvs/notebooklm/bin/notebooklm-server \
+   NOTEBOOKLM_HL=it NOTEBOOKLM_SERVER_TOKEN_FILE=$HOME/.notebooklm-server-token pm2 start \
+     ~/foundryuserdata/Data/modules/notebooklm-chat/server/notebooklm_chat_server.py \
      --name notebooklm --interpreter ~/.venvs/notebooklm/bin/python -- --port 3334 && pm2 save
    ```
-   Per cambiare una variabile in seguito, usa `pm2 restart notebooklm --update-env` con le variabili davanti, poi `pm2 save`.
+   - **Controllo**: `~/.venvs/notebooklm/bin/python …/notebooklm_chat_server.py --selftest` deve stampare `selftest ok`. Ripetilo dopo ogni aggiornamento di notebooklm-py: lo script usa moduli interni della libreria.
+   - **Variabili**: per cambiarne una in seguito, usa `pm2 restart notebooklm --update-env` con le variabili davanti, poi `pm2 save`.
+   - **Senza filtro sulle fonti**: si può usare anche `~/.venvs/notebooklm/bin/notebooklm-server` al posto dello script.
 5. **Caddyfile**: aggiungi questo blocco nel sito di Foundry, prima del `handle` finale.
    - `header_up Host localhost` serve perché notebooklm-server accetta solo richieste indirizzate a localhost.
    - Il filtro sui percorsi lascia passare solo l'elenco dei notebook, le fonti e la chat.
    ```
    handle_path /notebooklm/* {
-       @api path_regexp ^/v1/notebooks(/[^/]+/(sources|chat|chat/configure|suggested-prompts))?$
+       @api path_regexp ^/v1/notebooks(/[^/]+/(sources|chat|chat/configure|chat/sources|suggested-prompts))?$
        handle @api {
            reverse_proxy localhost:3334 {
                header_up Host localhost

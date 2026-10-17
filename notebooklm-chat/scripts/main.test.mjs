@@ -29,6 +29,7 @@ test("md", () => {
   assert.equal(md("**Horror** è per *Call of Cthulhu* [1, 2]"), "<strong>Horror</strong> è per <em>Call of Cthulhu</em> [1, 2]");
   assert.equal(md("### Tappe\n* Parigi\n- Losanna"), "<strong>Tappe</strong>\n• Parigi\n• Losanna");
   assert.equal(md("2 * 3 * 4"), "2 * 3 * 4");
+  assert.equal(md("per ***Il Richiamo di Cthulhu*** [1]"), "per <strong><em>Il Richiamo di Cthulhu</em></strong> [1]");
   assert.equal(md("<img src=x onerror=alert(1)> *ok*"), "&#60;img src=x onerror=alert(1)&#62; <em>ok</em>");
 });
 

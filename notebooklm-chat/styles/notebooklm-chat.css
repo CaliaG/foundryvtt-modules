@@ -10,6 +10,8 @@
 #notebooklm-chat details { margin-top: 4px; font-size: 0.9em; }
 #notebooklm-chat .nlm-ref { display: flex; flex-direction: column; margin: 4px 0 0 8px; }
 #notebooklm-chat .nlm-ref span { white-space: pre-wrap; opacity: 0.8; }
+#notebooklm-chat .nlm-sources { font-size: 0.9em; }
+#notebooklm-chat .nlm-sources label { display: flex; align-items: center; gap: 4px; }
 #notebooklm-chat .nlm-actions { display: flex; gap: 4px; }
 #notebooklm-chat .nlm-share { width: auto; margin-top: 4px; font-size: 0.85em; }
 #notebooklm-chat .nlm-form textarea { flex: 1; resize: none; }
