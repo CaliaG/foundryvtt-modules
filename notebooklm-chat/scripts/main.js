@@ -21,15 +21,31 @@ const el = (tag, props = {}, ...children) => {
 };
 
 const escapeHTML = s => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+const waitText = start => `Sto pensando… ${Math.round((Date.now() - start) / 1000)} s`;
+// Orienta le domande suggerite verso il lavoro del Custode (NotebookLM le scrive comunque in inglese).
+const TIPS_QUERY = "Domande utili al Custode che prepara o conduce la sessione: PNG, indizi, luoghi, regole";
+
+// "1, 2" / "2-4" -> [1, 2] / [2, 3, 4]
+const citeNumbers = s => s.split(",").flatMap(part => {
+  const [a, b = a] = part.split("-").map(Number);
+  return Array.from({ length: Math.max(0, b - a) + 1 }, (_, i) => a + i);
+});
 
 // Il markdown che usa NotebookLM -> HTML. Prima l'escape, poi solo tag nostri: niente HTML né link dalla risposta.
+// I rimandi [n] diventano tooltip di Foundry con il passaggio citato.
 // ponytail: solo titoli, elenchi, **grassetto** e *corsivo*; tabelle e link restano testo.
-export function md(text) {
+export function md(text, refs = []) {
   return escapeHTML(text)
     .replace(/^#{1,6}\s+(.+)$/gm, "<strong>$1</strong>")
     .replace(/^(\s*)[*-]\s+/gm, "$1• ")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+    .replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>")
+    .replace(/\[(\d+(?:\s*[,-]\s*\d+)*)\]/g, (marker, nums) => {
+      const tip = citeNumbers(nums).flatMap(n => refs.filter(r => r.n === n).map(r =>
+        `<p><strong>[${n}] ${escapeHTML(r.source)}</strong><br>${escapeHTML(r.text.length > 400 ? `${r.text.slice(0, 400)}…` : r.text)}</p>`
+      )).join("");
+      return tip ? `<span class="nlm-cite" data-tooltip-html="${escapeHTML(tip)}">${marker}</span>` : marker;
+    });
 }
 
 // Risposta -> messaggio di chat, senza i rimandi [1], [2-3] alle fonti.
@@ -48,6 +64,20 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
   sources = {};       // notebookId -> {sourceId: titolo}
   pending = null;     // domanda in attesa di risposta
   draft = null;       // domanda fallita da rimettere nel campo
+  started = 0;        // quando è partita la domanda in attesa
+  tips = {};          // notebookId -> [{title, prompt}] oppure "loading"
+  showTips = false;   // suggerimenti mostrati anche con la conversazione già avviata
+
+  async loadTips(nb) {
+    this.tips[nb] = "loading";
+    try {
+      this.tips[nb] = (await api(`/notebooks/${nb}/suggested-prompts?query=${encodeURIComponent(TIPS_QUERY)}`)).suggestions ?? [];
+    } catch (err) {
+      console.warn(`${ID} | domande suggerite`, err);
+      this.tips[nb] = [];
+    }
+    this.render();
+  }
 
   async loadSources(nb) {
     if (!this.sources[nb]) {
@@ -60,7 +90,13 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
   async ask(question) {
     const nb = get("notebookId");
     this.pending = question;
+    this.showTips = false;
+    this.started = Date.now();
     this.render();
+    const tick = setInterval(() => {
+      const wait = this.element?.querySelector(".nlm-a.nlm-wait");
+      if (wait) wait.textContent = waitText(this.started);
+    }, 1000);
     try {
       const history = foundry.utils.deepClone(get("history"));
       const h = history[nb] ??= { conversation: null, turns: [] };
@@ -77,6 +113,7 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
       ui.notifications.error(`NotebookLM: ${err.message}`);
       this.draft = question;   // la domanda torna nel campo, da riprovare
     }
+    clearInterval(tick);
     this.pending = null;
     this.render();
   }
@@ -114,32 +151,52 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
     select.addEventListener("change", async () => { await game.settings.set(ID, "notebookId", select.value); this.render(); });
     const clear = el("button", { type: "button", title: "Svuota conversazione", disabled: !!this.pending }, el("i", { className: "fas fa-broom" }));
     clear.addEventListener("click", () => this.clear());
+    const tipsButton = el("button", { type: "button", title: "Domande suggerite", disabled: !!this.pending }, el("i", { className: "fas fa-lightbulb" }));
+    tipsButton.addEventListener("click", () => { this.showTips = !this.showTips; this.render(); });
 
     const turns = get("history")[nb]?.turns ?? [];
     const log = el("div", { className: "nlm-log" },
       ...turns.map(t => this.turnHTML(t)),
       this.pending && this.turnHTML({ q: this.pending }));
 
-    const input = el("textarea", { placeholder: "Chiedi all'avventura… (Invio per inviare)", disabled: !!this.pending, rows: 3, value: this.draft ?? "" });
+    const input = el("textarea", { placeholder: "Chiedi all'avventura… (Invio per inviare)", disabled: !!this.pending, rows: 3,
+      // Un nuovo render (es. suggerimenti arrivati) non cancella quello che si sta scrivendo.
+      value: this.draft ?? this.element?.querySelector(".nlm-form textarea")?.value ?? "" });
     this.draft = null;
+    const tips = (!turns.length || this.showTips) && !this.pending ? this.tipsHTML(nb, input) : null;
     const form = el("form", { className: "nlm-form" }, input,
       el("button", { type: "submit", disabled: !!this.pending }, el("i", { className: "fas fa-paper-plane" })));
     form.addEventListener("submit", e => {
       e.preventDefault();
       const q = input.value.trim();
-      if (q && !this.pending) this.ask(q);
+      if (!q || this.pending) return;
+      input.value = "";
+      this.ask(q);
     });
     input.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
     });
 
-    return el("div", { className: "nlm" }, el("div", { className: "nlm-head" }, select, clear), log, form);
+    return el("div", { className: "nlm" }, el("div", { className: "nlm-head" }, select, tipsButton, clear), log, tips, form);
+  }
+
+  // Domande suggerite da NotebookLM: un clic le mette nel campo, da rileggere o tradurre prima di inviarle.
+  tipsHTML(nb, input) {
+    if (this.tips[nb] === undefined) this.loadTips(nb);
+    const tips = this.tips[nb];
+    if (!Array.isArray(tips)) return el("div", { className: "nlm-tips nlm-wait", textContent: "Carico domande suggerite…" });
+    if (!tips.length) return null;
+    return el("div", { className: "nlm-tips" }, ...tips.map(t => {
+      const chip = el("button", { type: "button", textContent: t.title, title: t.prompt });
+      chip.addEventListener("click", () => { input.value = t.prompt; input.focus(); });
+      return chip;
+    }));
   }
 
   turnHTML({ q, a, refs = [] }) {
     const answer = a == null
-      ? el("div", { className: "nlm-a nlm-wait", textContent: "Sto pensando…" })
-      : el("div", { className: "nlm-a", innerHTML: md(a) });
+      ? el("div", { className: "nlm-a nlm-wait", textContent: waitText(this.started) })
+      : el("div", { className: "nlm-a", innerHTML: md(a, refs) });
     const turn = el("div", { className: "nlm-turn" }, el("div", { className: "nlm-q", textContent: q }), answer);
     if (refs.length) turn.append(el("details", {},
       el("summary", { textContent: `Fonti (${refs.length})` }),

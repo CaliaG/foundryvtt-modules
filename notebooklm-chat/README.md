@@ -54,7 +54,7 @@ Serve Python 3.10 o superiore.
    - Il filtro sui percorsi lascia passare solo l'elenco dei notebook, le fonti e la chat.
    ```
    handle_path /notebooklm/* {
-       @api path_regexp ^/v1/notebooks(/[^/]+/(sources|chat))?$
+       @api path_regexp ^/v1/notebooks(/[^/]+/(sources|chat|suggested-prompts))?$
        handle @api {
            reverse_proxy localhost:3334 {
                header_up Host localhost

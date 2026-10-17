@@ -12,4 +12,7 @@
 #notebooklm-chat .nlm-ref span { white-space: pre-wrap; opacity: 0.8; }
 #notebooklm-chat .nlm-share { width: auto; margin-top: 4px; font-size: 0.85em; }
 #notebooklm-chat .nlm-form textarea { flex: 1; resize: none; }
+#notebooklm-chat .nlm-cite { border-bottom: 1px dotted currentColor; cursor: help; }
+#notebooklm-chat .nlm-tips { display: flex; flex-wrap: wrap; gap: 4px; }
+#notebooklm-chat .nlm-tips button { flex: 0 0 auto; width: auto; font-size: 0.85em; }
 #notebooklm-chat .nlm-error { color: var(--color-level-error, #c00); }
