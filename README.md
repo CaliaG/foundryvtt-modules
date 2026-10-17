@@ -5,6 +5,7 @@ Moduli per FoundryVTT v13, uno per cartella.
 | Modulo | Descrizione | Manifest |
 |---|---|---|
 | [remote-deck](remote-deck/) | Smartphone/iPad come Stream Deck (audio, Soundscape, personaggi, macro) | `https://raw.githubusercontent.com/CaliaG/foundryvtt-modules/main/remote-deck/module.json` |
+| [notebooklm-chat](notebooklm-chat/) | Domande ai notebook di NotebookLM (l'avventura) da una finestra in Foundry, solo GM | `https://raw.githubusercontent.com/CaliaG/foundryvtt-modules/main/notebooklm-chat/module.json` |
 
 ## Rilasciare una versione
 

@@ -1,0 +1,15 @@
+#notebooklm-chat .window-content { padding: 0; }
+#notebooklm-chat .nlm { display: flex; flex-direction: column; height: 100%; gap: 6px; padding: 8px; }
+#notebooklm-chat .nlm-head, #notebooklm-chat .nlm-form { display: flex; gap: 6px; }
+#notebooklm-chat .nlm-head select { flex: 1; }
+#notebooklm-chat .nlm-head button, #notebooklm-chat .nlm-form button { flex: 0 0 36px; }
+#notebooklm-chat .nlm-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+#notebooklm-chat .nlm-q { font-weight: bold; }
+#notebooklm-chat .nlm-a { white-space: pre-wrap; margin-top: 2px; }
+#notebooklm-chat .nlm-wait { font-style: italic; opacity: 0.7; }
+#notebooklm-chat details { margin-top: 4px; font-size: 0.9em; }
+#notebooklm-chat .nlm-ref { display: flex; flex-direction: column; margin: 4px 0 0 8px; }
+#notebooklm-chat .nlm-ref span { white-space: pre-wrap; opacity: 0.8; }
+#notebooklm-chat .nlm-share { width: auto; margin-top: 4px; font-size: 0.85em; }
+#notebooklm-chat .nlm-form textarea { flex: 1; resize: none; }
+#notebooklm-chat .nlm-error { color: var(--color-level-error, #c00); }
