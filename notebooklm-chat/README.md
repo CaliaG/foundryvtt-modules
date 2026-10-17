@@ -73,6 +73,29 @@ Serve Python 3.10 o superiore.
 
 Dopo aver aggiornato notebooklm-py (`pip install -U`) esegui `pm2 restart notebooklm`.
 
+## Cambiare account Google
+
+Il modulo in Foundry e il token del server restano gli stessi: cambia solo il master token.
+
+1. **Sul Mac**: fai il login con il nuovo account. `--force` serve perché il profilo appartiene all'account vecchio.
+   ```bash
+   notebooklm login --master-token --account <nuovo-account>@gmail.com --browser chrome --force
+   ```
+2. **Copia il token sul server**:
+   ```bash
+   scp -p ~/.notebooklm/profiles/default/master_token.json <server>:.notebooklm/profiles/default/master_token.json
+   ```
+3. **Sul server**: cancella la sessione vecchia, rigenerala e riavvia. `notebooklm list` deve mostrare i notebook del nuovo account.
+   ```bash
+   rm ~/.notebooklm/profiles/default/storage_state.json
+   ~/.venvs/notebooklm/bin/notebooklm auth refresh --verify
+   ~/.venvs/notebooklm/bin/notebooklm list
+   pm2 restart notebooklm
+   ```
+4. **Revoca il token vecchio**, perché non scade da solo. Con l'account vecchio vai su Account Google → Sicurezza → I tuoi dispositivi e rimuovi il dispositivo creato dal login.
+
+Il nuovo account vede solo i suoi notebook: ricrea l'avventura lì, oppure condividila dall'account vecchio. In Foundry la finestra seleziona da sola il primo notebook disponibile.
+
 ## Problemi comuni
 
 | Messaggio | Causa |
