@@ -23,7 +23,7 @@
   header button.sel { background:var(--accent); color:#1a1208; }
   header { border-bottom:3px solid var(--bad); }
   header.ok { border-bottom-color:var(--on); }
-  main { padding:0 16px; }
+  main { padding:0 16px; min-height:calc(100vh - 160px); touch-action:pan-y; }
   .head { display:flex; align-items:center; gap:12px; margin:18px 0 8px; }
   h2 { flex:none; max-width:60%; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .head input[type=range] { flex:1; min-width:0; accent-color:var(--accent); height:28px; }
@@ -78,7 +78,7 @@
   token ? store.set("deckToken", token) : (token = store.get("deckToken"));
   let tab = store.get("deckTab");
   let favs = new Set(); try { favs = new Set(JSON.parse(store.get("deckFavs") ?? "[]")); } catch {}
-  let state = null, foundry = false, sse = false;
+  let state = null, foundry = false, sse = false, tabIds = [];
   const q = "t=" + encodeURIComponent(token ?? "");
   const $ = id => document.getElementById(id);
   const keyOf = btn => JSON.stringify(btn.action);
@@ -102,11 +102,12 @@
     render();
   }
 
-  // Tap = azione, pressione lunga (0,5 s) = aggiungi/togli dai preferiti.
+  // Tap = azione, pressione lunga (0,5 s) = aggiungi/togli dai preferiti. Se il dito si muove (swipe/scroll) non vale.
   function bindPress(tile, btn) {
-    let timer, long = false;
+    let timer, long = false, x = 0, y = 0;
     const cancel = () => clearTimeout(timer);
-    tile.onpointerdown = () => { long = false; timer = setTimeout(() => { long = true; toggleFav(btn); }, 500); };
+    tile.onpointerdown = e => { long = false; x = e.clientX; y = e.clientY; timer = setTimeout(() => { long = true; toggleFav(btn); }, 500); };
+    tile.onpointermove = e => { if (Math.hypot(e.clientX - x, e.clientY - y) > 10) cancel(); };
     tile.onpointerup = tile.onpointerleave = tile.onpointercancel = cancel;
     tile.oncontextmenu = e => e.preventDefault();
     tile.onclick = () => { if (!long) act(btn.action); };
@@ -164,9 +165,10 @@
     if (!state) return page.append(el("p", "empty", foundry ? "Caricamento…" : "In attesa di Foundry…"));
     const pages = [favPage(), ...state.pages];
     if (!pages.some(p => p.id === tab)) tab = state.pages[0]?.id;
+    tabIds = pages.map(p => p.id);
     for (const p of pages) {
       const b = el("button", p.id === tab ? "sel" : "", p.title);
-      b.onclick = () => { tab = p.id; store.set("deckTab", tab); render(); };
+      b.onclick = () => selectTab(p.id);
       tabs.append(b);
     }
     const current = pages.find(p => p.id === tab);
@@ -203,6 +205,32 @@
       page.append(grid);
     }
   }
+
+  function selectTab(id, dir = 0) {
+    tab = id;
+    store.set("deckTab", tab);
+    render();
+    window.scrollTo(0, 0);
+    $("tabs").querySelector(".sel")?.scrollIntoView({ inline: "center", block: "nearest" });
+    if (dir) $("page").animate([{ transform: `translateX(${dir * 40}px)`, opacity: 0.3 }, { transform: "none", opacity: 1 }], { duration: 180, easing: "ease-out" });
+  }
+
+  // Swipe orizzontale sul contenuto = tab precedente/successivo (non sulla barra dei tab né sugli slider).
+  let swipe = null;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    swipe = e.touches.length === 1 && !e.target.closest("header, input") ? { x: t.clientX, y: t.clientY, at: Date.now() } : null;
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (!swipe || !state) return;
+    const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, ms = Date.now() - swipe.at;
+    swipe = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy) || ms > 800) return;
+    const i = tabIds.indexOf(tab) + (dx < 0 ? 1 : -1);
+    if (i < 0 || i >= tabIds.length) return;
+    navigator.vibrate?.(10);
+    selectTab(tabIds[i], dx < 0 ? 1 : -1);
+  }, { passive: true });
 
   $("stop").onclick = () => act({ type: "stopAllAudio" });
   $("pause").onclick = () => act({ type: "pause" });

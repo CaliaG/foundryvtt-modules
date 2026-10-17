@@ -21,7 +21,7 @@ Telefono ──► relay Node (PC del GM, porta 3333) ◄── Foundry (browser
 4. **Telefono**: in Foundry vai su *Impostazioni → Remote Deck → QR per il telefono* e inquadra il QR. In alternativa apri l'URL stampato dal relay.
 5. **Installa come app**: con la deck aperta tramite l'URL con il token, scegli *Condividi → Aggiungi a Home* su iPhone/iPad, oppure *Installa app* su Android/Chrome. Si apre a schermo intero con la sua icona.
 
-La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrimenti. In basso ci sono sempre **Pausa/Riprendi** e **Stop audio**. Lo schermo del telefono resta acceso finché la deck è aperta.
+La barra sotto i tab è verde quando relay e Foundry sono connessi, rossa altrimenti. Per cambiare tab puoi toccarli o fare **swipe a destra/sinistra** sullo schermo. In basso ci sono sempre **Pausa/Riprendi** e **Stop audio**. Lo schermo del telefono resta acceso finché la deck è aperta.
 
 ## Cosa compare nella deck
 
