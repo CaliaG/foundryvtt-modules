@@ -66,6 +66,7 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
   draft = null;       // domanda fallita da rimettere nel campo
   started = 0;        // quando è partita la domanda in attesa
   tips = {};          // notebookId -> [{title, prompt}] oppure "loading"
+  styled = {};        // notebookId -> stile già applicato ("obiettivo|lunghezza")
   showTips = false;   // suggerimenti mostrati anche con la conversazione già avviata
 
   async loadTips(nb) {
@@ -87,6 +88,23 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
     return this.sources[nb];
   }
 
+  // Lo stile resta salvato nel notebook su NotebookLM: lo riapplica solo se le impostazioni sono cambiate
+  // dall'ultima volta in questa sessione.
+  async applyStyle(nb) {
+    const goal = get("goal").trim(), length = get("responseLength");
+    const key = `${goal}|${length}`;
+    if (this.styled[nb] === key) return;
+    // Senza obiettivo e con lunghezza normale: torna allo stile predefinito di NotebookLM.
+    const body = goal ? { goal, response_length: length } : length === "default" ? {} : { response_length: length };
+    try {
+      await api(`/notebooks/${nb}/chat/configure`, body);
+      this.styled[nb] = key;
+    } catch (err) {
+      console.warn(`${ID} | stile delle risposte`, err);
+      ui.notifications.warn(`NotebookLM: stile delle risposte non applicato (${err.message})`);
+    }
+  }
+
   async ask(question) {
     const nb = get("notebookId");
     this.pending = question;
@@ -100,6 +118,7 @@ class NotebookChat extends foundry.applications.api.ApplicationV2 {
     try {
       const history = foundry.utils.deepClone(get("history"));
       const h = history[nb] ??= { conversation: null, turns: [] };
+      await this.applyStyle(nb);
       const [r, sources] = await Promise.all([
         api(`/notebooks/${nb}/chat`, { question, conversation_id: h.conversation }),
         this.loadSources(nb).catch(() => ({}))
@@ -261,6 +280,17 @@ Hooks.once("init", () => {
   game.settings.register(ID, "token", {
     name: "Token", hint: "Il contenuto di ~/.notebooklm-server-token sul server.",
     scope: "user", config: true, type: String, default: ""
+  });
+  game.settings.register(ID, "goal", {
+    name: "Stile delle risposte",
+    hint: "Istruzioni fisse per NotebookLM, applicate a ogni notebook prima della prima domanda. Vuoto = stile predefinito di NotebookLM.",
+    scope: "world", config: true, type: String,
+    default: "Sei l'assistente del Custode in una campagna di Call of Cthulhu. Rispondi sempre in italiano, in modo pratico per chi conduce la sessione: vai al punto, usa elenchi brevi e distingui ciò che i giocatori possono scoprire da ciò che deve restare segreto."
+  });
+  game.settings.register(ID, "responseLength", {
+    name: "Lunghezza delle risposte",
+    scope: "world", config: true, type: String, default: "default",
+    choices: { shorter: "Brevi", default: "Normali", longer: "Lunghe" }
   });
   game.settings.register(ID, "notebookId", { scope: "client", config: false, type: String, default: "" });
   // {notebookId: {conversation, turns: [{q, a, refs}]}}: la cronologia resta dopo un reload.

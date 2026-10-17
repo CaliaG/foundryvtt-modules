@@ -16,6 +16,7 @@ Foundry (browser del GM) ──► https://<foundry>/notebooklm/ ──Caddy─�
 - La risposta è numerata come in NotebookLM. **Fonti** mostra i passaggi citati e il documento da cui vengono.
 - **Invia in chat** pubblica la risposta, senza citazioni, nella chat di Foundry. Utile per le informazioni da dare ai giocatori.
 - La cronologia è salvata nel browser del GM, un notebook alla volta. 🧹 la cancella.
+- **Stile e lunghezza delle risposte** si scelgono nelle impostazioni del modulo. Di default: in italiano, pratiche, adatte al Custode. Il modulo li applica al notebook su NotebookLM prima della prima domanda. Lasciando lo stile vuoto e la lunghezza "Normali" torna lo stile predefinito di NotebookLM.
 
 I notebook vanno creati, con le loro fonti, sul sito di NotebookLM con l'account dedicato.
 
@@ -56,7 +57,7 @@ Serve Python 3.10 o superiore.
    - Il filtro sui percorsi lascia passare solo l'elenco dei notebook, le fonti e la chat.
    ```
    handle_path /notebooklm/* {
-       @api path_regexp ^/v1/notebooks(/[^/]+/(sources|chat|suggested-prompts))?$
+       @api path_regexp ^/v1/notebooks(/[^/]+/(sources|chat|chat/configure|suggested-prompts))?$
        handle @api {
            reverse_proxy localhost:3334 {
                header_up Host localhost
