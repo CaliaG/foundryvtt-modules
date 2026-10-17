@@ -2,7 +2,7 @@
   "id": "notebooklm-chat",
   "title": "NotebookLM Chat",
   "description": "Fai domande ai tuoi notebook di NotebookLM (l'avventura in PDF o Docs) da una finestra dentro Foundry, solo per il GM.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -20,5 +20,5 @@
   ],
   "url": "https://github.com/CaliaG/foundryvtt-modules",
   "manifest": "https://raw.githubusercontent.com/CaliaG/foundryvtt-modules/main/notebooklm-chat/module.json",
-  "download": "https://github.com/CaliaG/foundryvtt-modules/releases/download/notebooklm-chat-v0.4.0/notebooklm-chat.zip"
+  "download": "https://github.com/CaliaG/foundryvtt-modules/releases/download/notebooklm-chat-v0.5.0/notebooklm-chat.zip"
 }
