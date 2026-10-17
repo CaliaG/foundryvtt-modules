@@ -22,7 +22,7 @@ const el = (tag, props = {}, ...children) => {
 
 const escapeHTML = s => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const waitText = start => `Sto pensando… ${Math.round((Date.now() - start) / 1000)} s`;
-// Orienta le domande suggerite verso il lavoro del Custode (NotebookLM le scrive comunque in inglese).
+// Orienta le domande suggerite verso il lavoro del Custode. La lingua la decide NOTEBOOKLM_HL sul server.
 const TIPS_QUERY = "Domande utili al Custode che prepara o conduce la sessione: PNG, indizi, luoghi, regole";
 
 // "1, 2" / "2-4" -> [1, 2] / [2, 3, 4]

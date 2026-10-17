@@ -44,11 +44,12 @@ Serve Python 3.10 o superiore.
    ```bash
    (umask 077; openssl rand -hex 16 > ~/.notebooklm-server-token)
    ```
-4. **pm2**:
+4. **pm2**. Con `NOTEBOOKLM_HL=it` le domande suggerite arrivano in italiano; senza, in inglese.
    ```bash
-   NOTEBOOKLM_SERVER_TOKEN_FILE=$HOME/.notebooklm-server-token pm2 start ~/.venvs/notebooklm/bin/notebooklm-server \
+   NOTEBOOKLM_HL=it NOTEBOOKLM_SERVER_TOKEN_FILE=$HOME/.notebooklm-server-token pm2 start ~/.venvs/notebooklm/bin/notebooklm-server \
      --name notebooklm --interpreter ~/.venvs/notebooklm/bin/python -- --port 3334 && pm2 save
    ```
+   Per cambiare una variabile in seguito, usa `pm2 restart notebooklm --update-env` con le variabili davanti, poi `pm2 save`.
 5. **Caddyfile**: aggiungi questo blocco nel sito di Foundry, prima del `handle` finale.
    - `header_up Host localhost` serve perché notebooklm-server accetta solo richieste indirizzate a localhost.
    - Il filtro sui percorsi lascia passare solo l'elenco dei notebook, le fonti e la chat.
